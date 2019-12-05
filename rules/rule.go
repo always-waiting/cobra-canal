@@ -17,8 +17,14 @@ type Rule struct {
 	Log          *log.Logger
 }
 
-var CreateRule = func(config.RuleConfig) (rule Rule, err error) {
-	return
+func RegisterRuleMaker(f func(config.RuleConfig) (Rule, error)) {
+	ruleMaker = f
+}
+
+var ruleMaker func(config.RuleConfig) (Rule, error)
+
+func CreateRule(cfg config.RuleConfig) (rule Rule, err error) {
+	return ruleMaker(cfg)
 }
 
 func InitRule(cfg config.RuleConfig) (rule Rule, err error) {
