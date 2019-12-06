@@ -41,6 +41,7 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 		this.filter.LoadTableFilter(ruleCfg.TableFilterCfg)
 	}
 	if len(ruleCfg.ConsumerCfg) == 0 {
+		this.Log.Info("构建fake消费器......")
 		ruleCfg.ConsumerCfg = append(ruleCfg.ConsumerCfg, &config.ConsumerConfig{})
 	}
 	this.consumers = make(map[string]*consumer.Consume)

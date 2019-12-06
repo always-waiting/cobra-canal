@@ -34,6 +34,9 @@ func CreateHandler(cfg []config.RuleConfig, buffer int) (h *Handler, err error) 
 	h.Rules = make([]*rules.Rule, 0)
 	h.buffer = make([]event.Event, 0, buffer)
 	h.bufferNum = buffer
+	if len(cfg) == 0 {
+		cfg = append(cfg, config.RuleConfig{})
+	}
 	for _, ruleCfg := range cfg {
 		var rule rules.Rule
 		if rule, err = rules.CreateRule(ruleCfg); err != nil {

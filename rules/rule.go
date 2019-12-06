@@ -40,15 +40,12 @@ func RegisterRuleMaker(name string, f func(config.RuleConfig) (Ruler, error)) {
 }
 
 func CreateRule(cfg config.RuleConfig) (rule Rule, err error) {
-	if cfg.Name == "" {
-		err = errors.New(LOAD_ERR1)
-		return
-	}
 	if rule, err = InitRule(cfg); err != nil {
 		return
 	}
 	var ruler Ruler
 	if cfg.Name == "" {
+		rule.Log.Info("构建fake规则......")
 		cfg.Name = "fake"
 	}
 	f, ok := ruleMakers[cfg.Name]
@@ -60,10 +57,10 @@ func CreateRule(cfg config.RuleConfig) (rule Rule, err error) {
 		err = errors.Errorf(LOAD_ERR3, cfg.Name)
 		return
 	}
+	ruler.SetLogger(rule.Log)
 	if err = ruler.LoadConfig(cfg); err != nil {
 		return
 	}
-	ruler.SetLogger(rule.Log)
 	rule.SetRuler(ruler)
 	return
 }
