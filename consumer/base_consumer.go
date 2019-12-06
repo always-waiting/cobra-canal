@@ -42,7 +42,8 @@ func (b *BaseConsumer) Transfer(events []event.Event) (interface{}, error) {
 	if b.transferFunc != nil {
 		return b.transferFunc(events)
 	}
-	return nil, errors.New(BASE_CONSUMER_ERR1)
+	return events, nil
+	//return nil, errors.New(BASE_CONSUMER_ERR1)
 }
 
 func (b *BaseConsumer) SetTransferFunc(f func([]event.Event) (interface{}, error)) {

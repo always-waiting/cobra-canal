@@ -26,6 +26,7 @@ type BasicRuler struct {
 	closed           bool
 	closeAggregation chan bool
 	Log              *log.Logger
+	transferFunc     map[string]func([]event.Event) (interface{}, error)
 }
 
 func (this *BasicRuler) SetLogger(l *log.Logger) {
@@ -47,6 +48,9 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 		if consume, err := consumer.CreateConsume(consumerCfg); err != nil {
 			return err
 		} else {
+			if f, ok := this.transferFunc[consume.GetName()]; ok {
+				consume.SetTransferFunc(f)
+			}
 			this.consumers[consume.GetName()] = &consume
 		}
 	}
@@ -62,6 +66,14 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 	return
 }
 
+func (this *BasicRuler) AddTransferFunc(name string, f func([]event.Event) (interface{}, error)) {
+	if this.transferFunc == nil {
+		this.transferFunc = make(map[string]func([]event.Event) (interface{}, error))
+	}
+	this.transferFunc[name] = f
+}
+
+/*
 func (this *BasicRuler) SetConsumerTransferFunc(name string, f func([]event.Event) (interface{}, error)) (err error) {
 	if _, ok := this.consumers[name]; !ok {
 		err = errors.Errorf("未初始化的消费器%s", name)
@@ -70,6 +82,7 @@ func (this *BasicRuler) SetConsumerTransferFunc(name string, f func([]event.Even
 	this.consumers[name].SetTransferFunc(f)
 	return err
 }
+*/
 
 func (this *BasicRuler) Start() {
 	this.StartConsume()
