@@ -27,6 +27,7 @@ type BasicRuler struct {
 	closeAggregation chan bool
 	Log              *log.Logger
 	transferFunc     map[string]func([]event.Event) (interface{}, error)
+	hasLoadConfig    bool
 }
 
 func (this *BasicRuler) SetLogger(l *log.Logger) {
@@ -34,6 +35,10 @@ func (this *BasicRuler) SetLogger(l *log.Logger) {
 }
 
 func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
+	if this.hasLoadConfig {
+		return
+	}
+	this.hasLoadConfig = true
 	this.aggregator = ruleCfg.InitAggregator()
 	this.closeAggregation = make(chan bool, 1)
 	if len(ruleCfg.ReplySync) != 0 {
