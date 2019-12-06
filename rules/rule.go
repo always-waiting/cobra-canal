@@ -4,7 +4,14 @@ import (
 	"github.com/always-waiting/cobra-canal/config"
 	cobraErrors "github.com/always-waiting/cobra-canal/errors"
 	"github.com/always-waiting/cobra-canal/event"
+	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
+)
+
+const (
+	LOAD_ERR1 = "规则名为空"
+	LOAD_ERR2 = "规则(%s)未注册"
+	LOAD_ERR3 = "生成%s规则失败"
 )
 
 type Rule struct {
@@ -17,14 +24,48 @@ type Rule struct {
 	Log          *log.Logger
 }
 
-func RegisterRuleMaker(f func(config.RuleConfig) (Rule, error)) {
-	ruleMaker = f
+var ruleMakers = map[string]func(config.RuleConfig) (Ruler, error){
+	"fake": func(cfg config.RuleConfig) (Ruler, error) {
+		r := &BasicRuler{}
+		r.SetName("fake")
+		r.AddFilterFunc(func(e *event.Event) (bool, error) {
+			return true, nil
+		})
+		return r, nil
+	},
 }
 
-var ruleMaker func(config.RuleConfig) (Rule, error)
+func RegisterRuleMaker(name string, f func(config.RuleConfig) (Ruler, error)) {
+	ruleMakers[name] = f
+}
 
 func CreateRule(cfg config.RuleConfig) (rule Rule, err error) {
-	return ruleMaker(cfg)
+	if cfg.Name == "" {
+		err = errors.New(LOAD_ERR1)
+		return
+	}
+	if rule, err = InitRule(cfg); err != nil {
+		return
+	}
+	var ruler Ruler
+	if cfg.Name == "" {
+		cfg.Name = "fake"
+	}
+	f, ok := ruleMakers[cfg.Name]
+	if !ok {
+		err = errors.Errorf(LOAD_ERR2, cfg.Name)
+	}
+	ruler, err = f(cfg)
+	if ruler == nil {
+		err = errors.Errorf(LOAD_ERR3, cfg.Name)
+		return
+	}
+	if err = ruler.LoadConfig(cfg); err != nil {
+		return
+	}
+	ruler.SetLogger(rule.Log)
+	rule.SetRuler(ruler)
+	return
 }
 
 func InitRule(cfg config.RuleConfig) (rule Rule, err error) {

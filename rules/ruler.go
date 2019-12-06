@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"github.com/always-waiting/cobra-canal/config"
 	"github.com/always-waiting/cobra-canal/event"
 	"github.com/siddontang/go-log/log"
 )
@@ -13,4 +14,5 @@ type Ruler interface {
 	Debug()
 	Info()
 	SetLogger(*log.Logger)
+	LoadConfig(config.RuleConfig) error
 }

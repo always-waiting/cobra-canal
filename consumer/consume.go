@@ -14,7 +14,47 @@ const (
 	HEADER     = ">>>>>>>>%s<<<<<<<<\n"
 	DONE       = "<<<<<<<<%s>>>>>>>>\n"
 	EVENT_LINE = "################"
+	LOAD_ERR1  = "消费类型(%s)未定义"
+	LOAD_ERR2  = "生成%s消费下游失败"
 )
+
+var consumerMakers = map[string]func(*config.ConsumerConfig) (Consumer, error){
+	"fake": func(cfg *config.ConsumerConfig) (Consumer, error) {
+		cr := new(BaseConsumer)
+		cr.SetName("fake")
+		cr.SetTransferFunc(func(e []event.Event) (out interface{}, err error) { return })
+		return cr, nil
+	},
+}
+
+func RegisterConsumerMaker(name string, f func(*config.ConsumerConfig) (Consumer, error)) {
+	consumerMakers[name] = f
+}
+
+func CreateConsume(cfg *config.ConsumerConfig) (ret Consume, err error) {
+	if ret, err = InitConsume(cfg); err != nil {
+		return
+	}
+	var csr Consumer
+	if cfg.Type == "" {
+		cfg.Type = "fake"
+	}
+	f, ok := consumerMakers[cfg.Type]
+	if !ok {
+		err = errors.Errorf(LOAD_ERR1, cfg.Type)
+	}
+	if csr, err = f(cfg); err != nil {
+		return
+	}
+	if csr == nil {
+		err = errors.Errorf(LOAD_ERR2, cfg.Type)
+		return
+	}
+	csr.SetLogger(ret.Log)
+	err = csr.Open()
+	ret.SetConsumer(csr)
+	return
+}
 
 type Consume struct {
 	consumer        Consumer
@@ -24,6 +64,17 @@ type Consume struct {
 	isConsumerClose chan bool
 	errHr           *cobraErrors.ErrHandler
 	Log             *log.Logger
+}
+
+func MakeFakeConsume() Consume {
+	cfg := config.ConsumerConfig{}
+	c, _ := InitConsume(&cfg)
+	cr := new(BaseConsumer)
+	cr.SetName("fake")
+	cr.SetTransferFunc(func(e []event.Event) (out interface{}, err error) { return })
+	cr.Log = c.Log
+	c.SetConsumer(cr)
+	return c
 }
 
 func InitConsume(cfg *config.ConsumerConfig) (Consume, error) {
