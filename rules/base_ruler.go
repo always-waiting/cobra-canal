@@ -114,8 +114,12 @@ func (this *BasicRuler) Close() (err error) {
 		err = this.CloseAggregation()
 	}
 	this.CloseConsume()
-	this.DBClient.Close()
-	this.MasterDB.Close()
+	if this.DBClient != nil {
+		this.DBClient.Close()
+	}
+	if this.MasterDB != nil {
+		this.MasterDB.Close()
+	}
 	return
 }
 
