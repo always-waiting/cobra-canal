@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	AGGREGATOR_HEADER = "-------->缓存键值为:%s<--------"
+	AGGREGATOR_HEADER = "Worker%d: -------->缓存键值为:%s<--------"
 )
 
 type BasicRuler struct {
@@ -123,19 +123,19 @@ func (this *BasicRuler) Close() (err error) {
 	return
 }
 
-func (this *BasicRuler) HandleEvent(e event.Event) (err error) {
+func (this *BasicRuler) HandleEvent(e event.Event, worker int) (err error) {
 	// 应用过滤规则
 	flag, err := this.Filter(&e)
 	if err != nil || !flag {
 		err = this.ModifyErr(err)
-		this.Log.Debug("事件跳过")
+		this.Log.Debugf("Worker%d: 事件跳过", worker)
 		return
 	}
 	// 消费事件
 	if this.IsAggre() {
-		err = this.Aggregate(e)
+		err = this.Aggregate(e, worker)
 	} else {
-		this.Push([]event.Event{e})
+		this.Push([]event.Event{e}, worker)
 	}
 	return
 }
@@ -202,12 +202,12 @@ func (this *BasicRuler) CloseConsume() {
 	wg.Wait()
 }
 
-func (this *BasicRuler) Push(events []event.Event) {
+func (this *BasicRuler) Push(events []event.Event, worker int) {
 	var wg sync.WaitGroup
 	for _, consume := range this.consumers {
 		wg.Add(1)
 		go func(c *consumer.Consume) {
-			this.Log.Debugf("%s规则向%s消费池推送事件包", this.name, c.GetName())
+			this.Log.Debugf("Worker%d: %s规则向%s消费池推送事件包", worker, this.name, c.GetName())
 			c.Push(events)
 			wg.Done()
 		}(consume)
@@ -228,7 +228,7 @@ func (this *BasicRuler) StartAggregation() {
 			continue
 		}
 		this.Log.Debugf("聚合器消费%s键的事件包", key)
-		this.Push(events)
+		this.Push(events, -1)
 	}
 	this.closeAggregation <- true
 	this.Log.Info("聚合器关闭")
@@ -240,13 +240,13 @@ func (this *BasicRuler) CloseAggregation() error {
 	return nil
 }
 
-func (this *BasicRuler) Aggregate(e event.Event) (err error) {
+func (this *BasicRuler) Aggregate(e event.Event, worker int) (err error) {
 	key, err := this.aggregator.GetIdxValue(e)
 	if err != nil {
 		return
 	}
 	if key != "" {
-		this.Log.Debugf(AGGREGATOR_HEADER, key)
+		this.Log.Debugf(AGGREGATOR_HEADER, worker, key)
 		if this.aggregator.HasIdx(key) {
 			err = this.aggregator.AppendEvent(key, e)
 		} else {

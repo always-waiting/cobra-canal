@@ -10,6 +10,7 @@ type RuleConfig struct {
 	AggreCfg       *AggreConfig       `toml:"aggregation" description:"缓存配置"`
 	ErrSenderCfg   errSenderConfig    `toml:"err_sender"`
 	LogCfg         LogConfig          `toml:"log"`
+	WorkerNum      int                `toml:"worker"`
 }
 
 func (r *RuleConfig) HasTableFilter() bool {
@@ -33,4 +34,11 @@ func (r *RuleConfig) GetBufferNum() int {
 		return 10
 	}
 	return r.BufferNum
+}
+
+func (r *RuleConfig) Worker() int {
+	if r.WorkerNum == 0 {
+		return 1
+	}
+	return r.WorkerNum
 }

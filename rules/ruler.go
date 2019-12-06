@@ -9,7 +9,7 @@ import (
 type Ruler interface {
 	Start()
 	Close() error
-	HandleEvent(event.Event) error
+	HandleEvent(event.Event, int) error
 	GetName() string
 	Debug()
 	Info()

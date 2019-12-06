@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"fmt"
 	"github.com/MakeNowJust/heredoc"
 	"github.com/always-waiting/cobra-canal/config"
 	cobraErrors "github.com/always-waiting/cobra-canal/errors"
@@ -8,6 +9,7 @@ import (
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
 	"strings"
+	"sync"
 )
 
 const (
@@ -63,6 +65,7 @@ type Consume struct {
 	isConsumerClose chan bool
 	errHr           *cobraErrors.ErrHandler
 	Log             *log.Logger
+	consumerNum     int
 }
 
 func MakeFakeConsume() Consume {
@@ -83,6 +86,7 @@ func InitConsume(cfg *config.ConsumerConfig) (Consume, error) {
 	consume.isConsumerClose = make(chan bool, 1)
 	consume.errHr = cobraErrors.MakeErrHandler(cfg.ErrSenderCfg.Parse(), cfg.GetBufferNum())
 	consume.Log, err = cfg.LogCfg.GetLogger()
+	consume.consumerNum = cfg.Worker()
 	return consume, err
 }
 
@@ -127,30 +131,64 @@ func (this *Consume) Start() {
 	}
 	this.isReady = true
 	go this.errHr.Send()
-	for {
-		input, isOpen := <-this.eventsChan
-		if !isOpen {
-			break
-		}
-		this.Log.Debugf(HEADER, "消费开始")
-		this.Log.Debug("发现如下事件包:")
-		for _, e := range input {
-			this.Log.Debug(EVENT_LINE)
-			this.Log.Debug(e.String())
-		}
-		this.Log.Debugf("消费器%s转换事件包", this.GetName())
-		data, err := this.consumer.Transfer(input)
-		if err != nil {
-			go this.errHr.Push(this.modifyErr(err, input))
-			continue
-		}
-		this.Log.Debugf("转换后的信息为:%#v\n", data)
-		this.Log.Debugf("消费器%s消费事件包", this.GetName())
-		if err = this.consumer.Solve(data); err != nil {
-			go this.errHr.Push(this.modifyErr(err, input))
-		}
-		this.Log.Debugf("消费完毕")
+	var wg sync.WaitGroup
+	for i := 0; i < this.consumerNum; i++ {
+		wg.Add(1)
+		go func(num int) {
+			for {
+				input, isOpen := <-this.eventsChan
+				if !isOpen {
+					break
+				}
+				this.Log.Debugf("Worker%d: %s", num, fmt.Sprintf(HEADER, "消费开始"))
+				this.Log.Debugf("Worker%d: 发现如下事件包:", num)
+				for _, e := range input {
+					this.Log.Debugf("Worker%d: %s", num, EVENT_LINE)
+					this.Log.Debugf("Worker%d: %s", num, e.String())
+				}
+				this.Log.Debugf("Worker%d: 消费器%s转换事件包", num, this.GetName())
+				data, err := this.consumer.Transfer(input)
+				if err != nil {
+					go this.errHr.Push(this.modifyErr(err, input))
+					continue
+				}
+				this.Log.Debugf("Worker%d: 转换后的信息为:%#v\n", num, data)
+				this.Log.Debugf("Worker%d: 消费器%s消费事件包", num, this.GetName())
+				if err = this.consumer.Solve(data); err != nil {
+					go this.errHr.Push(this.modifyErr(err, input))
+				}
+				this.Log.Debugf("Worker%d: 消费完毕", num)
+			}
+			wg.Done()
+		}(i)
 	}
+	wg.Wait()
+	/*
+		for {
+			input, isOpen := <-this.eventsChan
+			if !isOpen {
+				break
+			}
+			this.Log.Debugf(HEADER, "消费开始")
+			this.Log.Debug("发现如下事件包:")
+			for _, e := range input {
+				this.Log.Debug(EVENT_LINE)
+				this.Log.Debug(e.String())
+			}
+			this.Log.Debugf("消费器%s转换事件包", this.GetName())
+			data, err := this.consumer.Transfer(input)
+			if err != nil {
+				go this.errHr.Push(this.modifyErr(err, input))
+				continue
+			}
+			this.Log.Debugf("转换后的信息为:%#v\n", data)
+			this.Log.Debugf("消费器%s消费事件包", this.GetName())
+			if err = this.consumer.Solve(data); err != nil {
+				go this.errHr.Push(this.modifyErr(err, input))
+			}
+			this.Log.Debugf("消费完毕")
+		}
+	*/
 	this.Log.Infof("%s消费池关闭", this.GetName())
 	this.isConsumerClose <- true
 }

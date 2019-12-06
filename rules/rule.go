@@ -6,6 +6,7 @@ import (
 	"github.com/always-waiting/cobra-canal/event"
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
+	"sync"
 )
 
 const (
@@ -22,6 +23,7 @@ type Rule struct {
 	closed       bool
 	isReady      bool
 	Log          *log.Logger
+	rulerNum     int
 }
 
 var ruleMakers = map[string]func(config.RuleConfig) (Ruler, error){
@@ -71,6 +73,7 @@ func InitRule(cfg config.RuleConfig) (rule Rule, err error) {
 	rule.errHr = cobraErrors.MakeErrHandler(cfg.ErrSenderCfg.Parse(), cfg.GetBufferNum())
 	rule.isRulerClose = make(chan bool, 1)
 	rule.Log, err = cfg.LogCfg.GetLogger()
+	rule.rulerNum = cfg.Worker()
 	return
 }
 
@@ -108,17 +111,38 @@ func (this *Rule) Start() {
 	go this.errHr.Send()
 	this.Log.Infof("%s规则的错误处理器开启", this.ruler.GetName())
 	this.ruler.Start()
-	for {
-		e, isOpen := <-this.eventChannel
-		if !isOpen {
-			break
-		}
-		this.Log.Debugf("%s规则发现有事件需要处理:\n%s", this.ruler.GetName(), e.String())
-		if err := this.ruler.HandleEvent(e); err != nil {
-			go this.errHr.Push(err)
-		}
-		this.Log.Debug("处理完毕")
+	var wg sync.WaitGroup
+	for i := 0; i < this.rulerNum; i++ {
+		wg.Add(1)
+		go func(num int) {
+			for {
+				e, isOpen := <-this.eventChannel
+				if !isOpen {
+					break
+				}
+				this.Log.Debugf("Worker%d: %s规则发现有事件需要处理:\n%s", num, this.ruler.GetName(), e.String())
+				if err := this.ruler.HandleEvent(e, num); err != nil {
+					go this.errHr.Push(err)
+				}
+				this.Log.Debug("Worker%d: 处理完毕", num)
+			}
+			wg.Done()
+		}(i)
 	}
+	wg.Wait()
+	/*
+		for {
+			e, isOpen := <-this.eventChannel
+			if !isOpen {
+				break
+			}
+			this.Log.Debugf("%s规则发现有事件需要处理:\n%s", this.ruler.GetName(), e.String())
+			if err := this.ruler.HandleEvent(e); err != nil {
+				go this.errHr.Push(err)
+			}
+			this.Log.Debug("处理完毕")
+		}
+	*/
 	this.Log.Infof("%s规则的事件池关闭", this.ruler.GetName())
 	this.isRulerClose <- true
 }
