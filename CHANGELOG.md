@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2019-12-06
+### Changed
+- 解决规则多次重载问题
+
 ## [1.0.1] - 2019-12-06
 ### Added 
 - 生成规则和消费的基础结构，构建fake对象
