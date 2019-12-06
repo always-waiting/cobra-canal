@@ -9,6 +9,8 @@ type Consumer interface {
 	Transfer([]event.Event) (interface{}, error)
 	Solve(interface{}) error
 	SetTransferFunc(func([]event.Event) (interface{}, error))
+	SetNumber(int)
+	Number() int
 	Open() error
 	Close() error
 	GetName() string

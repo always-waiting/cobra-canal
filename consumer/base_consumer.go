@@ -14,12 +14,21 @@ const (
 
 type BaseConsumer struct {
 	name         string
+	number       int
 	transferFunc func([]event.Event) (interface{}, error)
 	Log          *log.Logger
 }
 
 func (b *BaseConsumer) SetLogger(l *log.Logger) {
 	b.Log = l
+}
+
+func (b *BaseConsumer) SetNumber(i int) {
+	b.number = i
+}
+
+func (b *BaseConsumer) Number() int {
+	return b.number
 }
 
 func (b *BaseConsumer) GetName() string {

@@ -44,21 +44,27 @@ func CreateConsume(cfg *config.ConsumerConfig) (ret Consume, err error) {
 	if !ok {
 		err = errors.Errorf(LOAD_ERR1, cfg.Type)
 	}
-	if csr, err = f(cfg); err != nil {
-		return
+	for i := 0; i < ret.consumerNum; i++ {
+		if csr, err = f(cfg); err != nil {
+			return
+		}
+		if csr == nil {
+			err = errors.Errorf(LOAD_ERR2, cfg.Type)
+			return
+		}
+		csr.SetLogger(ret.Log)
+		csr.SetNumber(i)
+		err = csr.Open()
+		if err != nil {
+			return
+		}
+		ret.SetConsumer(csr)
 	}
-	if csr == nil {
-		err = errors.Errorf(LOAD_ERR2, cfg.Type)
-		return
-	}
-	csr.SetLogger(ret.Log)
-	err = csr.Open()
-	ret.SetConsumer(csr)
 	return
 }
 
 type Consume struct {
-	consumer        Consumer
+	consumer        []Consumer
 	eventsChan      chan []event.Event
 	closed          bool
 	isReady         bool
@@ -87,19 +93,25 @@ func InitConsume(cfg *config.ConsumerConfig) (Consume, error) {
 	consume.errHr = cobraErrors.MakeErrHandler(cfg.ErrSenderCfg.Parse(), cfg.GetBufferNum())
 	consume.Log, err = cfg.LogCfg.GetLogger()
 	consume.consumerNum = cfg.Worker()
+	consume.consumer = make([]Consumer, 0)
 	return consume, err
 }
 
 func (this *Consume) SetTransferFunc(f func([]event.Event) (interface{}, error)) {
-	this.consumer.SetTransferFunc(f)
+	for _, csr := range this.consumer {
+		csr.SetTransferFunc(f)
+	}
 }
 
 func (this *Consume) SetConsumer(consumer Consumer) {
-	this.consumer = consumer
+	this.consumer = append(this.consumer, consumer)
 }
 
 func (this *Consume) GetName() string {
-	return this.consumer.GetName()
+	if len(this.consumer) != 0 {
+		return this.consumer[0].GetName()
+	}
+	return ""
 }
 
 func (this *Consume) Push(input []event.Event) {
@@ -117,7 +129,14 @@ func (this *Consume) Close() error {
 	close(this.eventsChan)
 	this.closed = true
 	<-this.isConsumerClose
-	err := this.consumer.Close()
+	var err error
+	for _, csr := range this.consumer {
+		err = csr.Close()
+		if err != nil {
+			this.Log.Error(err)
+		}
+	}
+	//err := this.consumer.Close()
 	this.Log.Infof("%s消费器关闭", this.GetName())
 	this.errHr.Close()
 	this.Log.Infof("%s消费错误处理器关闭", this.GetName())
@@ -132,9 +151,10 @@ func (this *Consume) Start() {
 	this.isReady = true
 	go this.errHr.Send()
 	var wg sync.WaitGroup
-	for i := 0; i < this.consumerNum; i++ {
+	for _, csr := range this.consumer {
 		wg.Add(1)
-		go func(num int) {
+		go func(c Consumer) {
+			num := c.Number()
 			for {
 				input, isOpen := <-this.eventsChan
 				if !isOpen {
@@ -146,49 +166,23 @@ func (this *Consume) Start() {
 					this.Log.Debugf("Worker%d: %s", num, EVENT_LINE)
 					this.Log.Debugf("Worker%d: %s", num, e.String())
 				}
-				this.Log.Debugf("Worker%d: 消费器%s转换事件包", num, this.GetName())
-				data, err := this.consumer.Transfer(input)
+				this.Log.Debugf("Worker%d: 消费器%s转换事件包", num, c.GetName())
+				data, err := c.Transfer(input)
 				if err != nil {
 					go this.errHr.Push(this.modifyErr(err, input))
 					continue
 				}
 				this.Log.Debugf("Worker%d: 转换后的信息为:%#v\n", num, data)
-				this.Log.Debugf("Worker%d: 消费器%s消费事件包", num, this.GetName())
-				if err = this.consumer.Solve(data); err != nil {
+				this.Log.Debugf("Worker%d: 消费器%s消费事件包", num, c.GetName())
+				if err = c.Solve(data); err != nil {
 					go this.errHr.Push(this.modifyErr(err, input))
 				}
 				this.Log.Debugf("Worker%d: 消费完毕", num)
 			}
 			wg.Done()
-		}(i)
+		}(csr)
 	}
 	wg.Wait()
-	/*
-		for {
-			input, isOpen := <-this.eventsChan
-			if !isOpen {
-				break
-			}
-			this.Log.Debugf(HEADER, "消费开始")
-			this.Log.Debug("发现如下事件包:")
-			for _, e := range input {
-				this.Log.Debug(EVENT_LINE)
-				this.Log.Debug(e.String())
-			}
-			this.Log.Debugf("消费器%s转换事件包", this.GetName())
-			data, err := this.consumer.Transfer(input)
-			if err != nil {
-				go this.errHr.Push(this.modifyErr(err, input))
-				continue
-			}
-			this.Log.Debugf("转换后的信息为:%#v\n", data)
-			this.Log.Debugf("消费器%s消费事件包", this.GetName())
-			if err = this.consumer.Solve(data); err != nil {
-				go this.errHr.Push(this.modifyErr(err, input))
-			}
-			this.Log.Debugf("消费完毕")
-		}
-	*/
 	this.Log.Infof("%s消费池关闭", this.GetName())
 	this.isConsumerClose <- true
 }
