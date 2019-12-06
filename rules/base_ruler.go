@@ -36,7 +36,9 @@ func (this *BasicRuler) SetLogger(l *log.Logger) {
 func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 	this.aggregator = ruleCfg.InitAggregator()
 	this.closeAggregation = make(chan bool, 1)
-	this.filter.LoadReplySyncFilter(ruleCfg.ReplySync)
+	if len(ruleCfg.ReplySync) != 0 {
+		this.filter.LoadReplySyncFilter(ruleCfg.ReplySync)
+	}
 	if ruleCfg.HasTableFilter() {
 		this.filter.LoadTableFilter(ruleCfg.TableFilterCfg)
 	}
