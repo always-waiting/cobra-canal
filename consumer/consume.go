@@ -22,7 +22,6 @@ var consumerMakers = map[string]func(*config.ConsumerConfig) (Consumer, error){
 	"fake": func(cfg *config.ConsumerConfig) (Consumer, error) {
 		cr := new(BaseConsumer)
 		cr.SetName("fake")
-		cr.SetTransferFunc(func(e []event.Event) (out interface{}, err error) { return })
 		return cr, nil
 	},
 }

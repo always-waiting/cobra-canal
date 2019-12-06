@@ -34,6 +34,18 @@ type Event struct {
 	DDLSql  string          `description:"DDL语句"`
 }
 
+func (e *Event) Clone() (ret Event) {
+	ret = Event{}
+	table := *(e.Table)
+	ret.Table = &table
+	ret.Type = e.Type
+	ret.Action = e.Action
+	ret.RawData = e.RawData
+	ret.Err = e.Err
+	ret.DDLSql = e.DDLSql
+	return
+}
+
 func (e *Event) GetNewData() (ret map[string]interface{}, err error) {
 	switch e.Action {
 	case "insert", "delete":
@@ -68,6 +80,72 @@ func (e *Event) GetRowData(row int) (ret map[string]interface{}, err error) {
 			return
 		}
 		ret[column.Name] = value
+	}
+	return
+}
+
+func (e *Event) GetInt(row int, column string) (ret int, err error) {
+	var i interface{}
+	var ok bool
+	if i, err = e.GetColumnValue(row, column); err != nil {
+		return
+	}
+	if ret, ok = i.(int); !ok {
+		err = errors.Errorf("%T无法转换为int", i)
+		return
+	}
+	return
+}
+
+func (e *Event) GetInt8(row int, column string) (ret int8, err error) {
+	var i interface{}
+	var ok bool
+	if i, err = e.GetColumnValue(row, column); err != nil {
+		return
+	}
+	if ret, ok = i.(int8); !ok {
+		err = errors.Errorf("%T无法转换为int8", i)
+		return
+	}
+	return
+}
+
+func (e *Event) GetInt64(row int, column string) (ret int64, err error) {
+	var i interface{}
+	var ok bool
+	if i, err = e.GetColumnValue(row, column); err != nil {
+		return
+	}
+	if ret, ok = i.(int64); !ok {
+		fmt.Printf("%T\n", i)
+		err = errors.Errorf("%T无法转换为int64", i)
+		return
+	}
+	return
+}
+
+func (e *Event) GetInt32(row int, column string) (ret int32, err error) {
+	var i interface{}
+	var ok bool
+	if i, err = e.GetColumnValue(row, column); err != nil {
+		return
+	}
+	if ret, ok = i.(int32); !ok {
+		err = errors.Errorf("%T无法转换为int32", i)
+		return
+	}
+	return
+}
+
+func (e *Event) GetString(row int, column string) (ret string, err error) {
+	var i interface{}
+	var ok bool
+	if i, err = e.GetColumnValue(row, column); err != nil {
+		return
+	}
+	if ret, ok = i.(string); !ok {
+		err = errors.New("无法转换为string")
+		return
 	}
 	return
 }

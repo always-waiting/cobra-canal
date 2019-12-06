@@ -28,6 +28,7 @@ func (c *configure) String() string {
 
 func (c *configure) GetBufferNum() int {
 	if c.BufferNum == 0 {
+		log.Info("handle使用默认缓存长度: 100000")
 		return 1000 * 100
 	}
 	return c.BufferNum

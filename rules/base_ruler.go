@@ -10,6 +10,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
+	"github.com/siddontang/go-mysql/client"
 )
 
 const (
@@ -21,6 +22,7 @@ type BasicRuler struct {
 	aggregator       config.Aggregatable
 	consumers        map[string]*consumer.Consume
 	MasterDB         *gorm.DB
+	DBClient         *client.Conn
 	filter           FilterHandler
 	isReady          bool
 	closed           bool
@@ -70,6 +72,14 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 		if this.MasterDB, err = gorm.Open("mysql", gormAddr); err != nil {
 			return
 		}
+		if this.DBClient, err = client.Connect(
+			ruleCfg.MasterDBCfg.Addr,
+			ruleCfg.MasterDBCfg.User,
+			ruleCfg.MasterDBCfg.Passwd,
+			ruleCfg.MasterDBCfg.Db,
+		); err != nil {
+			return
+		}
 	}
 	return
 }
@@ -104,6 +114,8 @@ func (this *BasicRuler) Close() (err error) {
 		err = this.CloseAggregation()
 	}
 	this.CloseConsume()
+	this.DBClient.Close()
+	this.MasterDB.Close()
 	return
 }
 
