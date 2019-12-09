@@ -7,7 +7,6 @@ import (
 	"github.com/always-waiting/cobra-canal/event"
 	"sync"
 
-	"github.com/jinzhu/gorm"
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
 	"github.com/siddontang/go-mysql/client"
@@ -22,7 +21,6 @@ type BasicRuler struct {
 	number           int
 	aggregator       config.Aggregatable
 	consumers        map[string]*consumer.Consume
-	MasterDB         *gorm.DB
 	DBClient         *client.Conn
 	filter           FilterHandler
 	isReady          bool
@@ -106,13 +104,6 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 		}
 	}
 	if ruleCfg.MasterDBCfg != nil {
-		var gormAddr string
-		if gormAddr, err = ruleCfg.MasterDBCfg.ToGormAddr(); err != nil {
-			return
-		}
-		if this.MasterDB, err = gorm.Open("mysql", gormAddr); err != nil {
-			return
-		}
 		if this.DBClient, err = client.Connect(
 			ruleCfg.MasterDBCfg.Addr,
 			ruleCfg.MasterDBCfg.User,
@@ -157,9 +148,6 @@ func (this *BasicRuler) Close() (err error) {
 	this.CloseConsume()
 	if this.DBClient != nil {
 		this.DBClient.Close()
-	}
-	if this.MasterDB != nil {
-		this.MasterDB.Close()
 	}
 	return
 }
