@@ -12,7 +12,12 @@ func (this *FilterHandler) LoadTableFilter(cfg config.TableFilterable) {
 		flag := cfg.IsTablePass(e.Table.Schema, e.Table.Name)
 		return flag, nil
 	}
-	this.AddFilterFunc(filter)
+	data := *this
+	if len(data) == 0 {
+		this.AddFilterFunc(filter)
+	} else {
+		*this = append([]func(*event.Event) (bool, error){filter}, data...)
+	}
 }
 
 func (this *FilterHandler) LoadReplySyncFilter(list []string) {
@@ -27,7 +32,12 @@ func (this *FilterHandler) LoadReplySyncFilter(list []string) {
 		}
 		return false, nil
 	}
-	this.AddFilterFunc(filter)
+	data := *this
+	if len(data) == 0 {
+		this.AddFilterFunc(filter)
+	} else {
+		*this = append([]func(*event.Event) (bool, error){filter}, data...)
+	}
 }
 
 func (this *FilterHandler) AddFilterFunc(f func(*event.Event) (bool, error)) {
