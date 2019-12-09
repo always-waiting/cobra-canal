@@ -14,11 +14,12 @@ import (
 )
 
 const (
-	AGGREGATOR_HEADER = "Worker%d: -------->缓存键值为:%s<--------"
+	AGGREGATOR_HEADER = "Rule%d: -------->缓存键值为:%s<--------"
 )
 
 type BasicRuler struct {
 	name             string
+	number           int
 	aggregator       config.Aggregatable
 	consumers        map[string]*consumer.Consume
 	MasterDB         *gorm.DB
@@ -32,8 +33,47 @@ type BasicRuler struct {
 	hasLoadConfig    bool
 }
 
+func (this *BasicRuler) Debugf(tmp string, i ...interface{}) {
+	nTmp := fmt.Sprintf("Rule%d: %s", this.number, tmp)
+	this.Log.Debugf(nTmp, i...)
+}
+
+func (this *BasicRuler) Infof(tmp string, i ...interface{}) {
+	nTmp := fmt.Sprintf("Rule%d: %s", this.number, tmp)
+	this.Log.Infof(nTmp, i...)
+}
+
+func (this *BasicRuler) Errorf(tmp string, i ...interface{}) {
+	nTmp := fmt.Sprintf("Rule%d: %s", this.number, tmp)
+	this.Log.Errorf(nTmp, i...)
+}
+
+func (this *BasicRuler) Info(i string) {
+	this.Log.Infof("Rule%d: %s", this.number, i)
+}
+
+func (this *BasicRuler) Debug(i string) {
+	this.Log.Debugf("Rule%d: %s", this.number, i)
+}
+
+func (this *BasicRuler) Error(i string) {
+	this.Log.Errorf("Rule%d: %s", this.number, i)
+}
+
 func (this *BasicRuler) SetLogger(l *log.Logger) {
 	this.Log = l
+}
+
+func (this *BasicRuler) GetNumber() int {
+	return this.number
+}
+
+func (this *BasicRuler) SetNumber(i int) {
+	this.number = i
+}
+
+func (this *BasicRuler) SetAggregator(ag config.Aggregatable) {
+	this.aggregator = ag
 }
 
 func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
@@ -61,6 +101,7 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 			if f, ok := this.transferFunc[consume.GetName()]; ok {
 				consume.SetTransferFunc(f)
 			}
+			consume.SetRulerNum(this.number)
 			this.consumers[consume.GetName()] = &consume
 		}
 	}
@@ -123,25 +164,22 @@ func (this *BasicRuler) Close() (err error) {
 	return
 }
 
-func (this *BasicRuler) HandleEvent(e event.Event, worker int) (err error) {
+func (this *BasicRuler) HandleEvent(e event.Event) (err error) {
 	// 应用过滤规则
 	flag, err := this.Filter(&e)
 	if err != nil || !flag {
 		err = this.ModifyErr(err)
-		this.Log.Debugf("Worker%d: 事件跳过", worker)
+		this.Log.Debugf("Rule%d: 事件跳过", this.number)
 		return
 	}
 	// 消费事件
 	if this.IsAggre() {
-		err = this.Aggregate(e, worker)
+		err = this.Aggregate(e)
 	} else {
-		this.Push([]event.Event{e}, worker)
+		this.Push([]event.Event{e})
 	}
 	return
 }
-
-func (this *BasicRuler) Debug() {}
-func (this *BasicRuler) Info()  {}
 
 func (this *BasicRuler) AddFilterFunc(f func(*event.Event) (bool, error)) {
 	this.filter.AddFilterFunc(f)
@@ -156,7 +194,7 @@ func (this *BasicRuler) GetName() string {
 }
 
 func (this *BasicRuler) Filter(e *event.Event) (bool, error) {
-	this.Log.Debug("根据规则进行过滤")
+	this.Log.Debugf("Rule%d: 根据规则进行过滤", this.number)
 	return this.filter.Filter(e)
 }
 
@@ -202,12 +240,12 @@ func (this *BasicRuler) CloseConsume() {
 	wg.Wait()
 }
 
-func (this *BasicRuler) Push(events []event.Event, worker int) {
+func (this *BasicRuler) Push(events []event.Event) {
 	var wg sync.WaitGroup
 	for _, consume := range this.consumers {
 		wg.Add(1)
 		go func(c *consumer.Consume) {
-			this.Log.Debugf("Worker%d: %s规则向%s消费池推送事件包", worker, this.name, c.GetName())
+			this.Log.Debugf("Rule%d: %s规则向%s消费池推送事件包", this.number, this.name, c.GetName())
 			c.Push(events)
 			wg.Done()
 		}(consume)
@@ -216,7 +254,6 @@ func (this *BasicRuler) Push(events []event.Event, worker int) {
 }
 
 func (this *BasicRuler) StartAggregation() {
-	this.Log.Info("聚合器开启...")
 	sendKey := this.aggregator.GetSendChan()
 	for {
 		key, isOpen := <-sendKey
@@ -227,26 +264,25 @@ func (this *BasicRuler) StartAggregation() {
 		if err != nil {
 			continue
 		}
-		this.Log.Debugf("聚合器消费%s键的事件包", key)
-		this.Push(events, -1)
+		this.Log.Debugf("Rule%d: 聚合消费%s键的事件包", this.number, key)
+		this.Push(events)
 	}
 	this.closeAggregation <- true
-	this.Log.Info("聚合器关闭")
 }
 
 func (this *BasicRuler) CloseAggregation() error {
-	this.aggregator.Stop()
+	//this.aggregator.Stop()
 	<-this.closeAggregation
 	return nil
 }
 
-func (this *BasicRuler) Aggregate(e event.Event, worker int) (err error) {
+func (this *BasicRuler) Aggregate(e event.Event) (err error) {
 	key, err := this.aggregator.GetIdxValue(e)
 	if err != nil {
 		return
 	}
 	if key != "" {
-		this.Log.Debugf(AGGREGATOR_HEADER, worker, key)
+		this.Log.Debugf(AGGREGATOR_HEADER, this.number, key)
 		if this.aggregator.HasIdx(key) {
 			err = this.aggregator.AppendEvent(key, e)
 		} else {
@@ -258,7 +294,7 @@ func (this *BasicRuler) Aggregate(e event.Event, worker int) (err error) {
 
 func (this *BasicRuler) ModifyErr(err error) (ret error) {
 	if err != nil {
-		str := fmt.Sprintf("规则%s报错: %s", this.GetName(), err.Error())
+		str := fmt.Sprintf("Rule%d: 规则%s报错: %s", this.number, this.GetName(), err.Error())
 		ret = errors.New(str)
 	}
 	return

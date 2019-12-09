@@ -9,10 +9,11 @@ import (
 type Ruler interface {
 	Start()
 	Close() error
-	HandleEvent(event.Event, int) error
+	HandleEvent(event.Event) error
 	GetName() string
-	Debug()
-	Info()
 	SetLogger(*log.Logger)
 	LoadConfig(config.RuleConfig) error
+	SetNumber(int)
+	GetNumber() int
+	SetAggregator(config.Aggregatable)
 }

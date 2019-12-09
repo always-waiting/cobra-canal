@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"fmt"
 	"github.com/always-waiting/cobra-canal/event"
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
@@ -15,8 +16,44 @@ const (
 type BaseConsumer struct {
 	name         string
 	number       int
+	rulerNum     int
 	transferFunc func([]event.Event) (interface{}, error)
 	Log          *log.Logger
+}
+
+func (b *BaseConsumer) Debugf(tmp string, i ...interface{}) {
+	nTmp := fmt.Sprintf("Rule%d-Csr%d: %s", b.rulerNum, b.number, tmp)
+	b.Log.Debugf(nTmp, i...)
+}
+
+func (b *BaseConsumer) Infof(tmp string, i ...interface{}) {
+	nTmp := fmt.Sprintf("Rule%d-Csr%d: %s", b.rulerNum, b.number, tmp)
+	b.Log.Infof(nTmp, i...)
+}
+
+func (b *BaseConsumer) Errorf(tmp string, i ...interface{}) {
+	nTmp := fmt.Sprintf("Rule%d-Csr%d: %s", b.rulerNum, b.number, tmp)
+	b.Log.Errorf(nTmp, i...)
+}
+
+func (b *BaseConsumer) Info(i string) {
+	b.Log.Infof("Rule%d-Csr%d: %s", b.rulerNum, b.number, i)
+}
+
+func (b *BaseConsumer) Debug(i string) {
+	b.Log.Debugf("Rule%d-Csr%d: %s", b.rulerNum, b.number, i)
+}
+
+func (b *BaseConsumer) Error(i string) {
+	b.Log.Errorf("Rule%d-Csr%d: %s", b.rulerNum, b.number, i)
+}
+
+func (b *BaseConsumer) SetRuleNum(i int) {
+	b.rulerNum = i
+}
+
+func (b *BaseConsumer) GetRuleNum() int {
+	return b.rulerNum
 }
 
 func (b *BaseConsumer) SetLogger(l *log.Logger) {

@@ -15,4 +15,6 @@ type Consumer interface {
 	Close() error
 	GetName() string
 	SetLogger(*log.Logger)
+	SetRuleNum(int)
+	GetRuleNum() int
 }
