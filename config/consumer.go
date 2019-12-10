@@ -21,6 +21,7 @@ type ConsumerConfig struct {
 	Method       string          `toml:"method"`
 	ChannelCfg   *ChannelConfig  `toml:"channel"`
 	QueueCfg     *QueueConfig    `toml:"queue"`
+	WorkerNum    int             `toml:"worker"`
 }
 
 func (c *ConsumerConfig) GetBufferNum() int {
@@ -28,6 +29,13 @@ func (c *ConsumerConfig) GetBufferNum() int {
 		return 10
 	}
 	return c.BufferNum
+}
+
+func (c *ConsumerConfig) Worker() int {
+	if c.WorkerNum == 0 {
+		return 1
+	}
+	return c.WorkerNum
 }
 
 type ChannelConfig struct {

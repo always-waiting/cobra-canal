@@ -151,16 +151,10 @@ func (e *Event) GetString(row int, column string) (ret string, err error) {
 }
 
 func (e *Event) String() string {
-	docTmp := heredoc.Doc(`
-	[库名]: %s<br>
-	[表名]: %s<br>
-	[同步类型]: %s<br>
-	`)
+	docTmp := heredoc.Doc(`[库名]: %s<br>[表名]: %s<br>[同步类型]: %s<br>`)
 	switch e.Type {
 	case SYNC_TYPE_ONROW:
-		docTmp = heredoc.Doc(docTmp + `[动作]: %s<br>
-[数据]: %v<br>
-		`)
+		docTmp = heredoc.Doc(docTmp + `[动作]: %s<br>[数据]: %v<br>`)
 		return fmt.Sprintf(docTmp, e.Table.Schema, e.Table.Name, e.Type,
 			e.Action, e.RawData,
 		)

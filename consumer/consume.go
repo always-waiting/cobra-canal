@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"fmt"
 	"github.com/MakeNowJust/heredoc"
 	"github.com/always-waiting/cobra-canal/config"
 	cobraErrors "github.com/always-waiting/cobra-canal/errors"
@@ -8,6 +9,7 @@ import (
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
 	"strings"
+	"sync"
 )
 
 const (
@@ -42,27 +44,35 @@ func CreateConsume(cfg *config.ConsumerConfig) (ret Consume, err error) {
 	if !ok {
 		err = errors.Errorf(LOAD_ERR1, cfg.Type)
 	}
-	if csr, err = f(cfg); err != nil {
-		return
+	for i := 0; i < ret.consumerNum; i++ {
+		if csr, err = f(cfg); err != nil {
+			return
+		}
+		if csr == nil {
+			err = errors.Errorf(LOAD_ERR2, cfg.Type)
+			return
+		}
+		csr.SetLogger(ret.Log)
+		csr.SetNumber(i)
+		err = csr.Open()
+		if err != nil {
+			return
+		}
+		ret.SetConsumer(csr)
 	}
-	if csr == nil {
-		err = errors.Errorf(LOAD_ERR2, cfg.Type)
-		return
-	}
-	csr.SetLogger(ret.Log)
-	err = csr.Open()
-	ret.SetConsumer(csr)
 	return
 }
 
 type Consume struct {
-	consumer        Consumer
+	consumer        []Consumer
 	eventsChan      chan []event.Event
 	closed          bool
 	isReady         bool
 	isConsumerClose chan bool
 	errHr           *cobraErrors.ErrHandler
 	Log             *log.Logger
+	consumerNum     int
+	rulerNum        int
 }
 
 func MakeFakeConsume() Consume {
@@ -83,24 +93,44 @@ func InitConsume(cfg *config.ConsumerConfig) (Consume, error) {
 	consume.isConsumerClose = make(chan bool, 1)
 	consume.errHr = cobraErrors.MakeErrHandler(cfg.ErrSenderCfg.Parse(), cfg.GetBufferNum())
 	consume.Log, err = cfg.LogCfg.GetLogger()
+	consume.consumerNum = cfg.Worker()
+	consume.consumer = make([]Consumer, 0)
 	return consume, err
 }
 
+func (this *Consume) SetRulerNum(i int) {
+	this.rulerNum = i
+	if this.consumer != nil {
+		for _, csr := range this.consumer {
+			csr.SetRuleNum(i)
+		}
+	}
+}
+
+func (this *Consume) GetRuleNum() int {
+	return this.rulerNum
+}
+
 func (this *Consume) SetTransferFunc(f func([]event.Event) (interface{}, error)) {
-	this.consumer.SetTransferFunc(f)
+	for _, csr := range this.consumer {
+		csr.SetTransferFunc(f)
+	}
 }
 
 func (this *Consume) SetConsumer(consumer Consumer) {
-	this.consumer = consumer
+	this.consumer = append(this.consumer, consumer)
 }
 
 func (this *Consume) GetName() string {
-	return this.consumer.GetName()
+	if len(this.consumer) != 0 {
+		return this.consumer[0].GetName()
+	}
+	return ""
 }
 
 func (this *Consume) Push(input []event.Event) {
 	if this.closed {
-		this.Log.Errorf("%s消费池已经关闭，无法放入事件包", this.GetName())
+		this.Log.Errorf("Rule%d: %s消费池已经关闭，无法放入事件包", this.GetRuleNum(), this.GetName())
 		return
 	}
 	this.eventsChan <- input
@@ -113,45 +143,61 @@ func (this *Consume) Close() error {
 	close(this.eventsChan)
 	this.closed = true
 	<-this.isConsumerClose
-	err := this.consumer.Close()
-	this.Log.Infof("%s消费器关闭", this.GetName())
+	var err error
+	for _, csr := range this.consumer {
+		err = csr.Close()
+		if err != nil {
+			this.Log.Error(err)
+		}
+	}
+	//err := this.consumer.Close()
+	this.Log.Infof("Rule%d: %s消费器关闭", this.GetRuleNum(), this.GetName())
 	this.errHr.Close()
-	this.Log.Infof("%s消费错误处理器关闭", this.GetName())
+	this.Log.Infof("Rule%d: %s消费错误处理器关闭", this.GetRuleNum(), this.GetName())
 	return err
 }
 
 func (this *Consume) Start() {
-	this.Log.Infof("%s消费池开启...", this.GetName())
+	this.Log.Infof("Rule%d: %s消费池开启...", this.GetRuleNum(), this.GetName())
 	if this.isReady {
 		return
 	}
 	this.isReady = true
 	go this.errHr.Send()
-	for {
-		input, isOpen := <-this.eventsChan
-		if !isOpen {
-			break
-		}
-		this.Log.Debugf(HEADER, "消费开始")
-		this.Log.Debug("发现如下事件包:")
-		for _, e := range input {
-			this.Log.Debug(EVENT_LINE)
-			this.Log.Debug(e.String())
-		}
-		this.Log.Debugf("消费器%s转换事件包", this.GetName())
-		data, err := this.consumer.Transfer(input)
-		if err != nil {
-			go this.errHr.Push(this.modifyErr(err, input))
-			continue
-		}
-		this.Log.Debugf("转换后的信息为:%#v\n", data)
-		this.Log.Debugf("消费器%s消费事件包", this.GetName())
-		if err = this.consumer.Solve(data); err != nil {
-			go this.errHr.Push(this.modifyErr(err, input))
-		}
-		this.Log.Debugf("消费完毕")
+	var wg sync.WaitGroup
+	for _, csr := range this.consumer {
+		wg.Add(1)
+		go func(c Consumer) {
+			num := c.Number()
+			for {
+				input, isOpen := <-this.eventsChan
+				if !isOpen {
+					break
+				}
+				this.Log.Debugf("Rule%d-Csr%d: %s", this.rulerNum, num, fmt.Sprintf(HEADER, "消费开始"))
+				this.Log.Debugf("Rule%d-Csr%d: 发现如下事件包:", this.rulerNum, num)
+				for _, e := range input {
+					this.Log.Debugf("Rule%d-Csr%d: %s", this.rulerNum, num, EVENT_LINE)
+					this.Log.Debugf("Rule%d-Csr%d: %s", this.rulerNum, num, e.String())
+				}
+				this.Log.Debugf("Rule%d-Csr%d: 消费器%s转换事件包", this.rulerNum, num, c.GetName())
+				data, err := c.Transfer(input)
+				if err != nil {
+					go this.errHr.Push(this.modifyErr(err, input))
+					continue
+				}
+				this.Log.Debugf("Rule%d-Csr%d: 转换后的信息为:%#v\n", this.rulerNum, num, data)
+				this.Log.Debugf("Rule%d-Csr%d: 消费器%s消费事件包", this.rulerNum, num, c.GetName())
+				if err = c.Solve(data); err != nil {
+					go this.errHr.Push(this.modifyErr(err, input))
+				}
+				this.Log.Debugf("Rule%d-Csr%d: 消费完毕", this.rulerNum, num)
+			}
+			wg.Done()
+		}(csr)
 	}
-	this.Log.Infof("%s消费池关闭", this.GetName())
+	wg.Wait()
+	this.Log.Infof("Rule%d: %s消费池关闭", this.GetRuleNum(), this.GetName())
 	this.isConsumerClose <- true
 }
 

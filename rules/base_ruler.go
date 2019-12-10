@@ -7,21 +7,20 @@ import (
 	"github.com/always-waiting/cobra-canal/event"
 	"sync"
 
-	"github.com/jinzhu/gorm"
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
 	"github.com/siddontang/go-mysql/client"
 )
 
 const (
-	AGGREGATOR_HEADER = "-------->缓存键值为:%s<--------"
+	AGGREGATOR_HEADER = "Rule%d: -------->缓存键值为:%s<--------"
 )
 
 type BasicRuler struct {
 	name             string
+	number           int
 	aggregator       config.Aggregatable
 	consumers        map[string]*consumer.Consume
-	MasterDB         *gorm.DB
 	DBClient         *client.Conn
 	filter           FilterHandler
 	isReady          bool
@@ -32,8 +31,47 @@ type BasicRuler struct {
 	hasLoadConfig    bool
 }
 
+func (this *BasicRuler) Debugf(tmp string, i ...interface{}) {
+	nTmp := fmt.Sprintf("Rule%d: %s", this.number, tmp)
+	this.Log.Debugf(nTmp, i...)
+}
+
+func (this *BasicRuler) Infof(tmp string, i ...interface{}) {
+	nTmp := fmt.Sprintf("Rule%d: %s", this.number, tmp)
+	this.Log.Infof(nTmp, i...)
+}
+
+func (this *BasicRuler) Errorf(tmp string, i ...interface{}) {
+	nTmp := fmt.Sprintf("Rule%d: %s", this.number, tmp)
+	this.Log.Errorf(nTmp, i...)
+}
+
+func (this *BasicRuler) Info(i string) {
+	this.Log.Infof("Rule%d: %s", this.number, i)
+}
+
+func (this *BasicRuler) Debug(i string) {
+	this.Log.Debugf("Rule%d: %s", this.number, i)
+}
+
+func (this *BasicRuler) Error(i string) {
+	this.Log.Errorf("Rule%d: %s", this.number, i)
+}
+
 func (this *BasicRuler) SetLogger(l *log.Logger) {
 	this.Log = l
+}
+
+func (this *BasicRuler) GetNumber() int {
+	return this.number
+}
+
+func (this *BasicRuler) SetNumber(i int) {
+	this.number = i
+}
+
+func (this *BasicRuler) SetAggregator(ag config.Aggregatable) {
+	this.aggregator = ag
 }
 
 func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
@@ -61,17 +99,11 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 			if f, ok := this.transferFunc[consume.GetName()]; ok {
 				consume.SetTransferFunc(f)
 			}
+			consume.SetRulerNum(this.number)
 			this.consumers[consume.GetName()] = &consume
 		}
 	}
 	if ruleCfg.MasterDBCfg != nil {
-		var gormAddr string
-		if gormAddr, err = ruleCfg.MasterDBCfg.ToGormAddr(); err != nil {
-			return
-		}
-		if this.MasterDB, err = gorm.Open("mysql", gormAddr); err != nil {
-			return
-		}
 		if this.DBClient, err = client.Connect(
 			ruleCfg.MasterDBCfg.Addr,
 			ruleCfg.MasterDBCfg.User,
@@ -117,9 +149,6 @@ func (this *BasicRuler) Close() (err error) {
 	if this.DBClient != nil {
 		this.DBClient.Close()
 	}
-	if this.MasterDB != nil {
-		this.MasterDB.Close()
-	}
 	return
 }
 
@@ -128,7 +157,7 @@ func (this *BasicRuler) HandleEvent(e event.Event) (err error) {
 	flag, err := this.Filter(&e)
 	if err != nil || !flag {
 		err = this.ModifyErr(err)
-		this.Log.Debug("事件跳过")
+		this.Log.Debugf("Rule%d: 事件跳过", this.number)
 		return
 	}
 	// 消费事件
@@ -139,9 +168,6 @@ func (this *BasicRuler) HandleEvent(e event.Event) (err error) {
 	}
 	return
 }
-
-func (this *BasicRuler) Debug() {}
-func (this *BasicRuler) Info()  {}
 
 func (this *BasicRuler) AddFilterFunc(f func(*event.Event) (bool, error)) {
 	this.filter.AddFilterFunc(f)
@@ -156,7 +182,7 @@ func (this *BasicRuler) GetName() string {
 }
 
 func (this *BasicRuler) Filter(e *event.Event) (bool, error) {
-	this.Log.Debug("根据规则进行过滤")
+	this.Log.Debugf("Rule%d: 根据规则进行过滤", this.number)
 	return this.filter.Filter(e)
 }
 
@@ -207,7 +233,7 @@ func (this *BasicRuler) Push(events []event.Event) {
 	for _, consume := range this.consumers {
 		wg.Add(1)
 		go func(c *consumer.Consume) {
-			this.Log.Debugf("%s规则向%s消费池推送事件包", this.name, c.GetName())
+			this.Log.Debugf("Rule%d: %s规则向%s消费池推送事件包", this.number, this.name, c.GetName())
 			c.Push(events)
 			wg.Done()
 		}(consume)
@@ -216,7 +242,6 @@ func (this *BasicRuler) Push(events []event.Event) {
 }
 
 func (this *BasicRuler) StartAggregation() {
-	this.Log.Info("聚合器开启...")
 	sendKey := this.aggregator.GetSendChan()
 	for {
 		key, isOpen := <-sendKey
@@ -227,15 +252,14 @@ func (this *BasicRuler) StartAggregation() {
 		if err != nil {
 			continue
 		}
-		this.Log.Debugf("聚合器消费%s键的事件包", key)
+		this.Log.Debugf("Rule%d: 聚合消费%s键的事件包", this.number, key)
 		this.Push(events)
 	}
 	this.closeAggregation <- true
-	this.Log.Info("聚合器关闭")
 }
 
 func (this *BasicRuler) CloseAggregation() error {
-	this.aggregator.Stop()
+	//this.aggregator.Stop()
 	<-this.closeAggregation
 	return nil
 }
@@ -246,7 +270,7 @@ func (this *BasicRuler) Aggregate(e event.Event) (err error) {
 		return
 	}
 	if key != "" {
-		this.Log.Debugf(AGGREGATOR_HEADER, key)
+		this.Log.Debugf(AGGREGATOR_HEADER, this.number, key)
 		if this.aggregator.HasIdx(key) {
 			err = this.aggregator.AppendEvent(key, e)
 		} else {
@@ -258,7 +282,7 @@ func (this *BasicRuler) Aggregate(e event.Event) (err error) {
 
 func (this *BasicRuler) ModifyErr(err error) (ret error) {
 	if err != nil {
-		str := fmt.Sprintf("规则%s报错: %s", this.GetName(), err.Error())
+		str := fmt.Sprintf("Rule%d: 规则%s报错: %s", this.number, this.GetName(), err.Error())
 		ret = errors.New(str)
 	}
 	return
