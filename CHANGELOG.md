@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.1.0] 2019-12-09
+### Added
 - event增加解析函数
 - rule增加新的mysql链接
 - 把rule变为可以有多个处理的模式，用worker确认
