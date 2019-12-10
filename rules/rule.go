@@ -55,6 +55,7 @@ func CreateRule(cfg config.RuleConfig) (rule Rule, err error) {
 	f, ok := ruleMakers[cfg.Name]
 	if !ok {
 		err = errors.Errorf(LOAD_ERR2, cfg.Name)
+		return
 	}
 	for i := 0; i < rule.rulerNum; i++ {
 		var ruler Ruler
