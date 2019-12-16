@@ -2,14 +2,16 @@ package rules
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/always-waiting/cobra-canal/config"
 	"github.com/always-waiting/cobra-canal/consumer"
 	"github.com/always-waiting/cobra-canal/event"
-	"sync"
 
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
 	"github.com/siddontang/go-mysql/client"
+	"github.com/siddontang/go-mysql/mysql"
 )
 
 const (
@@ -22,6 +24,7 @@ type BasicRuler struct {
 	aggregator       config.Aggregatable
 	consumers        map[string]*consumer.Consume
 	DBClient         *client.Conn
+	dbLock           sync.Mutex
 	filter           FilterHandler
 	isReady          bool
 	closed           bool
@@ -114,6 +117,12 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 		}
 	}
 	return
+}
+
+func (this *BasicRuler) DBExecute(cmd string, args ...interface{}) (*mysql.Result, error) {
+	defer this.dbLock.Unlock()
+	this.dbLock.Lock()
+	return this.DBClient.Execute(cmd, args...)
 }
 
 func (this *BasicRuler) AddTransferFunc(name string, f func([]event.Event) (interface{}, error)) {
