@@ -34,6 +34,9 @@ func MakeCobra() (c *Cobra, err error) {
 	cfg := config.Config()
 	c.Rebase = cfg.RebaseFlag
 	c.Log, err = cfg.LogCfg.GetLogger()
+	if err != nil {
+		return
+	}
 	c.Log.Debug("初始化Handler...")
 	if c.Handler, err = CreateHandler(cfg.RulesCfg, cfg.GetBufferNum()); err != nil {
 		return

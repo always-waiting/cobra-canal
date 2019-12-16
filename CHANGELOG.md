@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] 2019-12-16
+### Added
+- 增加命令行功能 
+- 优化消费器错误信息
+- 解决github.com/siddontang/go-mysql/client线程不安全问题
+
 ## [1.1.0] 2019-12-09
 ### Added
 - event增加解析函数

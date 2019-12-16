@@ -208,13 +208,13 @@ func (this *Consume) modifyErr(err error, input []event.Event) (retErr error) {
 	docTmp := heredoc.Doc(`<PRE>
 	事件包为:<br>
 	%s<br>
-	消费器错误信息:<br>
+	消费器%s错误信息:<br>
 	%s<br>
 	</PRE>`)
 	inputStr := make([]string, 0)
 	for _, data := range input {
 		inputStr = append(inputStr, data.String())
 	}
-	retErr = errors.Errorf(docTmp, strings.Join(inputStr, "<br>###########<br>"), err.Error())
+	retErr = errors.Errorf(docTmp, strings.Join(inputStr, "<br>###########<br>"), this.GetName(), err.Error())
 	return
 }
