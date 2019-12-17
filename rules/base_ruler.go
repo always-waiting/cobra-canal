@@ -24,6 +24,7 @@ type BasicRuler struct {
 	aggregator       config.Aggregatable
 	consumers        map[string]*consumer.Consume
 	DBClient         *client.Conn
+	mysqlCfg         *config.MysqlConfig
 	dbLock           sync.Mutex
 	filter           FilterHandler
 	isReady          bool
@@ -107,11 +108,12 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 		}
 	}
 	if ruleCfg.MasterDBCfg != nil {
+		this.mysqlCfg = ruleCfg.MasterDBCfg
 		if this.DBClient, err = client.Connect(
-			ruleCfg.MasterDBCfg.Addr,
-			ruleCfg.MasterDBCfg.User,
-			ruleCfg.MasterDBCfg.Passwd,
-			ruleCfg.MasterDBCfg.Db,
+			this.mysqlCfg.Addr,
+			this.mysqlCfg.User,
+			this.mysqlCfg.Passwd,
+			this.mysqlCfg.Db,
 		); err != nil {
 			return
 		}
@@ -122,7 +124,21 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 func (this *BasicRuler) DBExecute(cmd string, args ...interface{}) (*mysql.Result, error) {
 	defer this.dbLock.Unlock()
 	this.dbLock.Lock()
-	return this.DBClient.Execute(cmd, args...)
+	res, err := this.DBClient.Execute(cmd, args...)
+	if err != nil {
+		if e := this.DBClient.Ping(); e != nil {
+			if this.DBClient, err = client.Connect(
+				this.mysqlCfg.Addr,
+				this.mysqlCfg.User,
+				this.mysqlCfg.Passwd,
+				this.mysqlCfg.Db,
+			); err != nil {
+				return nil, err
+			}
+			res, err = this.DBClient.Execute(cmd, args...)
+		}
+	}
+	return res, err
 }
 
 func (this *BasicRuler) AddTransferFunc(name string, f func([]event.Event) (interface{}, error)) {
