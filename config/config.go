@@ -9,6 +9,7 @@ type configure struct {
 	MysqlCfg     *MysqlConfig    `toml:"mysql" description:"眼镜蛇mysql库配置"`
 	LogCfg       LogConfig       `toml:"log" description:"眼镜蛇日志配置"`
 	BufferNum    int             `toml:"buffer_number" description:"事件缓存个数"`
+	Port         int             `toml:"port" description:"程序对外的交互端口"`
 	RulesCfg     []RuleConfig    `toml:"rules" description:"规则配置"`
 	ErrSenderCfg errSenderConfig `toml:"err_sender" description:"错误处理配置"`
 	RebaseFlag   bool            `toml:"rebase" description:"是否重新定位监控点"`
