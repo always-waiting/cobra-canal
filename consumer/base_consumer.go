@@ -84,6 +84,10 @@ func (b *BaseConsumer) Close() error {
 	return nil
 }
 
+func (b *BaseConsumer) Reset() error {
+	return nil
+}
+
 func (b *BaseConsumer) Transfer(events []event.Event) (interface{}, error) {
 	if b.transferFunc != nil {
 		return b.transferFunc(events)

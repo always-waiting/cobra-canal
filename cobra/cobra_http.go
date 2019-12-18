@@ -24,7 +24,10 @@ func CreateCobraHttp(port int) (*CobraHttp, error) {
 
 func (this *CobraHttp) AddRulePath(h *Handler) (err error) {
 	for _, r := range h.Rules {
-		this.Mux.Handle(fmt.Sprintf("/rule/%s", r.GetName()), r)
+		// 注册规则关闭路由
+		this.Mux.HandleFunc(fmt.Sprintf("/rules/%s/stop", r.GetName()), r.ServeHTTPStop)
+		// 注册规则开启路由
+		this.Mux.HandleFunc(fmt.Sprintf("/rules/%s/start", r.GetName()), r.ServeHTTPStart)
 	}
 	return nil
 }

@@ -8,8 +8,12 @@ import (
 	"github.com/siddontang/go-log/log"
 )
 
+type httpAction interface {
+	ServeHTTPStop(http.ResponseWriter, *http.Response)
+}
+
 type Ruler interface {
-	http.Handler
+	httpAction
 	Start()
 	Close() error
 	HandleEvent(event.Event) error
@@ -19,4 +23,5 @@ type Ruler interface {
 	SetNumber(int)
 	GetNumber() int
 	SetAggregator(config.Aggregatable)
+	Reset() error
 }

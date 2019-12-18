@@ -1,8 +1,6 @@
 package rules
 
 import (
-	"fmt"
-	"net/http"
 	"sync"
 
 	"github.com/always-waiting/cobra-canal/config"
@@ -144,6 +142,21 @@ func (this *Rule) Close() error {
 	return err
 }
 
+func (this *Rule) Reset() error {
+	var err error
+	this.isReady = false
+	this.closed = false
+	this.eventChannel = make(chan event.Event, cap(this.eventChannel))
+	this.errHr.Reset()
+	this.aggregator.Reset()
+	for _, r := range this.ruler {
+		if err = r.Reset(); err != nil {
+			break
+		}
+	}
+	return err
+}
+
 func (this *Rule) Start() {
 	if this.isReady {
 		return
@@ -179,8 +192,4 @@ func (this *Rule) Start() {
 		this.Log.Infof("%s规则关闭聚合器", this.name)
 	}
 	this.isRulerClose <- true
-}
-
-func (this *Rule) ServeHTTP(rsp http.ResponseWriter, req *http.Request) {
-	fmt.Println("为http功能提供支持")
 }

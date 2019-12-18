@@ -218,3 +218,17 @@ func (this *Consume) modifyErr(err error, input []event.Event) (retErr error) {
 	retErr = errors.Errorf(docTmp, strings.Join(inputStr, "<br>###########<br>"), this.GetName(), err.Error())
 	return
 }
+
+func (this *Consume) Reset() error {
+	var err error
+	this.isReady = false
+	this.closed = false
+	this.eventsChan = make(chan []event.Event, cap(this.eventsChan))
+	this.errHr.Reset()
+	for _, csr := range this.consumer {
+		if err = csr.Reset(); err != nil {
+			break
+		}
+	}
+	return err
+}

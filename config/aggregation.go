@@ -18,6 +18,7 @@ type Aggregatable interface {
 	MoveEvents(string) ([]event.Event, error)
 	DiffData(*IdxRuleConfig, map[string]interface{}, map[string]interface{}) (map[string]interface{}, error)
 	Stop()
+	Reset()
 }
 
 func makeDefaultAggregator(r *RuleConfig) *Aggregator {
@@ -42,6 +43,10 @@ func (b *Aggregator) Stop() {
 			break
 		}
 	}
+}
+
+func (b *Aggregator) Reset() {
+	b.Collector.SendChan = make(chan string)
 }
 
 func (this *Aggregator) AppendEvent(key string, e event.Event) error {

@@ -2,7 +2,6 @@ package rules
 
 import (
 	"fmt"
-	"net/http"
 	"sync"
 
 	"github.com/always-waiting/cobra-canal/config"
@@ -314,6 +313,14 @@ func (this *BasicRuler) ModifyErr(err error) (ret error) {
 	return
 }
 
-func (this *BasicRuler) ServeHTTP(rsp http.ResponseWriter, req *http.Request) {
-	fmt.Println("为http功能提供支持")
+func (this *BasicRuler) Reset() error {
+	var err error
+	this.isReady = false
+	this.closed = false
+	for _, c := range this.consumers {
+		if err = c.Reset(); err != nil {
+			break
+		}
+	}
+	return err
 }
