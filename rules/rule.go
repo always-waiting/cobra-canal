@@ -1,12 +1,15 @@
 package rules
 
 import (
+	"fmt"
+	"net/http"
+	"sync"
+
 	"github.com/always-waiting/cobra-canal/config"
 	cobraErrors "github.com/always-waiting/cobra-canal/errors"
 	"github.com/always-waiting/cobra-canal/event"
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
-	"sync"
 )
 
 const (
@@ -176,4 +179,8 @@ func (this *Rule) Start() {
 		this.Log.Infof("%s规则关闭聚合器", this.name)
 	}
 	this.isRulerClose <- true
+}
+
+func (this *Rule) ServeHTTP(rsp http.ResponseWriter, req *http.Request) {
+	fmt.Println("为http功能提供支持")
 }
