@@ -1,12 +1,9 @@
 package config
 
 import (
-	"fmt"
-	"io/ioutil"
-	"path/filepath"
-
-	"github.com/BurntSushi/toml"
 	"github.com/juju/errors"
+	"github.com/mitchellh/mapstructure"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -23,25 +20,17 @@ func Load(configFile string) {
 	if configFile == "" {
 		configFile = "/tmp/cobra.toml"
 	}
-	var data []byte
-	var err error
-	if data, err = ioutil.ReadFile(configFile); err != nil {
+	viper.SetConfigFile(configFile)
+	if err := viper.ReadInConfig(); err != nil {
 		panic(err)
 	}
-	if _, err = toml.Decode(string(data), &config); err != nil {
+	config = &configure{}
+	if err := viper.Unmarshal(config, func(m *mapstructure.DecoderConfig) {
+		m.TagName = "toml"
+	}); err != nil {
 		panic(err)
 	}
-	/*
-		if err = config.SetLog(); err != nil {
-			panic(err)
-		}
-	*/
-	if path, err := filepath.Abs(filepath.Dir(configFile)); err != nil {
-		panic(err)
-	} else {
-		_, filename := filepath.Split(configFile)
-		config.path = fmt.Sprintf("%s/%s", path, filename)
-	}
+	config.path = viper.ConfigFileUsed()
 }
 
 func Config() *configure {
@@ -50,4 +39,8 @@ func Config() *configure {
 	} else {
 		panic(errors.New(ERROR1))
 	}
+}
+
+func NewConfig() configure {
+	return configure{}
 }
