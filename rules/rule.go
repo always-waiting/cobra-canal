@@ -144,8 +144,6 @@ func (this *Rule) Close() error {
 
 func (this *Rule) Reset() error {
 	var err error
-	this.isReady = false
-	this.closed = false
 	this.eventChannel = make(chan event.Event, cap(this.eventChannel))
 	if this.errHr != nil {
 		this.errHr.Reset()
@@ -158,7 +156,12 @@ func (this *Rule) Reset() error {
 			break
 		}
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	this.isReady = false
+	this.closed = false
+	return nil
 }
 
 func (this *Rule) Start() {

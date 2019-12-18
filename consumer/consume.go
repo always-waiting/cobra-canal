@@ -221,8 +221,6 @@ func (this *Consume) modifyErr(err error, input []event.Event) (retErr error) {
 
 func (this *Consume) Reset() error {
 	var err error
-	this.isReady = false
-	this.closed = false
 	this.eventsChan = make(chan []event.Event, cap(this.eventsChan))
 	if this.errHr != nil {
 		this.errHr.Reset()
@@ -232,5 +230,10 @@ func (this *Consume) Reset() error {
 			break
 		}
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	this.isReady = false
+	this.closed = false
+	return nil
 }

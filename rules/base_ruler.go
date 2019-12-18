@@ -315,12 +315,15 @@ func (this *BasicRuler) ModifyErr(err error) (ret error) {
 
 func (this *BasicRuler) Reset() error {
 	var err error
-	this.isReady = false
-	this.closed = false
 	for _, c := range this.consumers {
 		if err = c.Reset(); err != nil {
 			break
 		}
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	this.isReady = false
+	this.closed = false
+	return nil
 }
