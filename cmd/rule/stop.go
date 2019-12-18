@@ -1,0 +1,46 @@
+package rule
+
+import (
+	"fmt"
+
+	"github.com/always-waiting/cobra-canal/helps"
+	"github.com/spf13/cobra"
+	"net/http"
+)
+
+var stopCmd = &cobra.Command{
+	Use:     "stop",
+	Short:   "关闭某一规则",
+	Version: "1.0.0",
+	Run:     stopCmdRun,
+}
+
+func stopCmdRun(cmd *cobra.Command, args []string) {
+	port, _ := cmd.Flags().GetString("port")
+	if port == "" {
+		pid, _ := cmd.Flags().GetString("pid")
+		if pid == "" {
+			panic(ERR1)
+		}
+		var err error
+		if port, err = helps.GetPortByPid(pid); err != nil {
+			panic(err)
+		}
+		if port == "" {
+			panic(ERR2)
+		}
+	}
+	rulename, _ := cmd.Flags().GetString("rule")
+	Addr := fmt.Sprintf("http://127.0.0.1:%s/rules/%s/stop", port, rulename)
+	req, _ := http.NewRequest("GET", Addr, nil)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	if resp.Status == "200 OK" {
+		fmt.Println("关闭成功")
+	} else {
+		fmt.Println("关闭失败")
+	}
+}
