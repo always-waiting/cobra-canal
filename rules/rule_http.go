@@ -17,5 +17,6 @@ func (this *Rule) ServeHTTPStart(rsp http.ResponseWriter, req *http.Request) {
 	if err := this.Reset(); err != nil {
 		return
 	}
+	this.Log.Info("重置成功")
 	go this.Start()
 }

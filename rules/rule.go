@@ -147,8 +147,12 @@ func (this *Rule) Reset() error {
 	this.isReady = false
 	this.closed = false
 	this.eventChannel = make(chan event.Event, cap(this.eventChannel))
-	this.errHr.Reset()
-	this.aggregator.Reset()
+	if this.errHr != nil {
+		this.errHr.Reset()
+	}
+	if this.IsAggre() {
+		this.aggregator.Reset()
+	}
 	for _, r := range this.ruler {
 		if err = r.Reset(); err != nil {
 			break
