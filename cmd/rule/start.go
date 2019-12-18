@@ -39,8 +39,8 @@ func startCmdRun(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	if resp.Status == "200 OK" {
-		fmt.Println("关闭成功")
+		fmt.Println("开启成功")
 	} else {
-		fmt.Println("关闭失败")
+		fmt.Println("开启失败")
 	}
 }
