@@ -224,7 +224,9 @@ func (this *Consume) Reset() error {
 	this.isReady = false
 	this.closed = false
 	this.eventsChan = make(chan []event.Event, cap(this.eventsChan))
-	this.errHr.Reset()
+	if this.errHr != nil {
+		this.errHr.Reset()
+	}
 	for _, csr := range this.consumer {
 		if err = csr.Reset(); err != nil {
 			break
