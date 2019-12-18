@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
+- 配置包使用viper
 - 处理mysql链接空闲过长断开问题
 
 ## [1.1.1] 2019-12-16
