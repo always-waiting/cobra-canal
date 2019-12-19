@@ -200,3 +200,21 @@ func (this *Rule) Start() {
 	}
 	this.isRulerClose <- true
 }
+
+func (this *Rule) IsClosed() bool {
+	return this.closed
+}
+
+func (this *Rule) RulerNum() int {
+	return this.rulerNum
+}
+
+func (this *Rule) ActiveRulerNum() int {
+	var num int
+	for _, r := range this.ruler {
+		if !r.IsClosed() {
+			num = num + 1
+		}
+	}
+	return num
+}

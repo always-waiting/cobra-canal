@@ -327,3 +327,7 @@ func (this *BasicRuler) Reset() error {
 	this.closed = false
 	return nil
 }
+
+func (this *BasicRuler) IsClosed() bool {
+	return this.closed
+}

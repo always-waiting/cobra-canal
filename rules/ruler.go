@@ -24,4 +24,5 @@ type Ruler interface {
 	GetNumber() int
 	SetAggregator(config.Aggregatable)
 	Reset() error
+	IsClosed() bool
 }

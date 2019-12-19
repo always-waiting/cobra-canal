@@ -3,9 +3,9 @@ package rule
 import (
 	"fmt"
 
-	"github.com/always-waiting/cobra-canal/helps"
-	"github.com/spf13/cobra"
 	"net/http"
+
+	"github.com/spf13/cobra"
 )
 
 var stopCmd = &cobra.Command{
@@ -15,20 +15,15 @@ var stopCmd = &cobra.Command{
 	Run:     stopCmdRun,
 }
 
+func init() {
+	stopCmd.Flags().String("rule", "", "规则名称")
+	stopCmd.MarkFlagRequired("rule")
+}
+
 func stopCmdRun(cmd *cobra.Command, args []string) {
-	port, _ := cmd.Flags().GetString("port")
-	if port == "" {
-		pid, _ := cmd.Flags().GetString("pid")
-		if pid == "" {
-			panic(ERR1)
-		}
-		var err error
-		if port, err = helps.GetPortByPid(pid); err != nil {
-			panic(err)
-		}
-		if port == "" {
-			panic(ERR2)
-		}
+	port, err := getPort(cmd)
+	if err != nil {
+		panic(err)
 	}
 	rulename, _ := cmd.Flags().GetString("rule")
 	Addr := fmt.Sprintf("http://127.0.0.1:%s/rules/%s/stop", port, rulename)

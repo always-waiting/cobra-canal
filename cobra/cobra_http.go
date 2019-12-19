@@ -29,6 +29,7 @@ func (this *CobraHttp) AddRulePath(h *Handler) (err error) {
 		// 注册规则开启路由
 		this.Mux.HandleFunc(fmt.Sprintf("/rules/%s/start", r.GetName()), r.ServeHTTPStart)
 	}
+	this.Mux.HandleFunc("/rules/report", h.ServeHTTPReport)
 	return nil
 }
 
