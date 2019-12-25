@@ -2,14 +2,16 @@ package consumer
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
+	"sync"
+
 	"github.com/MakeNowJust/heredoc"
 	"github.com/always-waiting/cobra-canal/config"
 	cobraErrors "github.com/always-waiting/cobra-canal/errors"
 	"github.com/always-waiting/cobra-canal/event"
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
-	"strings"
-	"sync"
 )
 
 const (
@@ -149,6 +151,17 @@ func (this *Consume) Close() error {
 		if err != nil {
 			this.Log.Error(err)
 		}
+		base := reflect.ValueOf(csr).Elem().FieldByName("BaseConsumer")
+		if base.IsValid() && base.CanAddr() {
+			f := base.Addr().MethodByName("Close")
+			if f.IsValid() {
+				f.Call(nil)
+			} else {
+				this.Log.Error("没有找到Close函数")
+			}
+		} else {
+			this.Log.Error("没有找到BaseConsumer对象")
+		}
 	}
 	//err := this.consumer.Close()
 	this.Log.Infof("Rule%d: %s消费器关闭", this.GetRuleNum(), this.GetName())
@@ -217,4 +230,48 @@ func (this *Consume) modifyErr(err error, input []event.Event) (retErr error) {
 	}
 	retErr = errors.Errorf(docTmp, strings.Join(inputStr, "<br>###########<br>"), this.GetName(), err.Error())
 	return
+}
+
+func (this *Consume) Reset() error {
+	var err error
+	this.eventsChan = make(chan []event.Event, cap(this.eventsChan))
+	if this.errHr != nil {
+		this.errHr.Reset()
+	}
+	for _, csr := range this.consumer {
+		if err = csr.Reset(); err != nil {
+			break
+		}
+		base := reflect.ValueOf(csr).Elem().FieldByName("BaseConsumer")
+		if base.IsValid() && base.CanAddr() {
+			f := base.Addr().MethodByName("Reset")
+			if f.IsValid() {
+				f.Call(nil)
+			} else {
+				this.Log.Error("没有找到Reset函数")
+			}
+		} else {
+			this.Log.Error("没有找到BaseConsumer对象")
+		}
+	}
+	if err != nil {
+		return err
+	}
+	this.isReady = false
+	this.closed = false
+	return nil
+}
+
+func (this *Consume) ConsumerNum() int {
+	return this.consumerNum
+}
+
+func (this *Consume) ActiveConsumerNum() int {
+	var num int
+	for _, csr := range this.consumer {
+		if !csr.IsClosed() {
+			num = num + 1
+		}
+	}
+	return num
 }

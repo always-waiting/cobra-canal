@@ -1,14 +1,16 @@
 package cmd
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	mcobra "github.com/always-waiting/cobra-canal/cobra"
 	"github.com/always-waiting/cobra-canal/config"
 	"github.com/google/gops/agent"
 	"github.com/siddontang/go-log/log"
 	"github.com/spf13/cobra"
-	"os"
-	"os/signal"
-	"syscall"
+	"github.com/spf13/viper"
 )
 
 var runCmd = &cobra.Command{
@@ -20,6 +22,8 @@ var runCmd = &cobra.Command{
 }
 
 func init() {
+	runCmd.Flags().Int("port", 6543, "程序交互端口")
+	viper.BindPFlag("port", runCmd.Flags().Lookup("port"))
 }
 
 func runCmdRun(cmd *cobra.Command, args []string) {
@@ -63,6 +67,7 @@ func runCmdRun(cmd *cobra.Command, args []string) {
 		cobraMonitor.Close()
 		done <- true
 	}()
+	go cobraMonitor.Http.Run()
 	err = cobraMonitor.Run()
 	if err != nil {
 		log.Errorf("运行出错信息:%s", err)

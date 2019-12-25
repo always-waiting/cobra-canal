@@ -19,6 +19,7 @@ type BaseConsumer struct {
 	rulerNum     int
 	transferFunc func([]event.Event) (interface{}, error)
 	Log          *log.Logger
+	closed       bool
 }
 
 func (b *BaseConsumer) Debugf(tmp string, i ...interface{}) {
@@ -81,6 +82,12 @@ func (b *BaseConsumer) Open() error {
 }
 
 func (b *BaseConsumer) Close() error {
+	b.closed = true
+	return nil
+}
+
+func (b *BaseConsumer) Reset() error {
+	b.closed = false
 	return nil
 }
 
@@ -111,4 +118,8 @@ func (b BaseConsumer) MergeErr(err1, err2 error) (retErr error) {
 		}
 	}
 	return
+}
+
+func (b *BaseConsumer) IsClosed() bool {
+	return b.closed
 }

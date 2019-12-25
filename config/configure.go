@@ -8,7 +8,9 @@ import (
 )
 
 const (
-	LOGCONFIG_ERR1 = "log-file需要定义"
+	LOGCONFIG_ERR1        = "log-file需要定义"
+	DEFAULT_PORT          = 6543
+	DEFAULT_BUFFER_NUMBER = 1000 * 100
 )
 
 func (c *configure) SetLog() (err error) {
@@ -28,10 +30,18 @@ func (c *configure) String() string {
 
 func (c *configure) GetBufferNum() int {
 	if c.BufferNum == 0 {
-		log.Info("handle使用默认缓存长度: 100000")
-		return 1000 * 100
+		log.Infof("handle使用默认缓存长度: %d", DEFAULT_BUFFER_NUMBER)
+		return DEFAULT_BUFFER_NUMBER
 	}
 	return c.BufferNum
+}
+
+func (c *configure) GetPort() int {
+	if c.Port == 0 {
+		log.Infof("使用默认端口: %d", DEFAULT_PORT)
+		return DEFAULT_PORT
+	}
+	return c.Port
 }
 
 func (c *configure) SetLogFile() (err error) {

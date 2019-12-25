@@ -1,12 +1,14 @@
 package rules
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/always-waiting/cobra-canal/config"
 	cobraErrors "github.com/always-waiting/cobra-canal/errors"
 	"github.com/always-waiting/cobra-canal/event"
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
-	"sync"
 )
 
 const (
@@ -141,6 +143,28 @@ func (this *Rule) Close() error {
 	return err
 }
 
+func (this *Rule) Reset() error {
+	var err error
+	this.eventChannel = make(chan event.Event, cap(this.eventChannel))
+	if this.errHr != nil {
+		this.errHr.Reset()
+	}
+	if this.IsAggre() {
+		this.aggregator.Reset()
+	}
+	for _, r := range this.ruler {
+		if err = r.Reset(); err != nil {
+			break
+		}
+	}
+	if err != nil {
+		return err
+	}
+	this.isReady = false
+	this.closed = false
+	return nil
+}
+
 func (this *Rule) Start() {
 	if this.isReady {
 		return
@@ -176,4 +200,54 @@ func (this *Rule) Start() {
 		this.Log.Infof("%s规则关闭聚合器", this.name)
 	}
 	this.isRulerClose <- true
+}
+
+func (this *Rule) IsClosed() bool {
+	return this.closed
+}
+
+func (this *Rule) RulerNum() int {
+	return this.rulerNum
+}
+
+func (this *Rule) ActiveRulerNum() int {
+	var num int
+	for _, r := range this.ruler {
+		if !r.IsClosed() {
+			num = num + 1
+		}
+	}
+	return num
+}
+
+func (this *Rule) ReportConsumer() (ret []string, err error) {
+	ret = make([]string, 0)
+	mapTotal := make(map[string]int)
+	mapActive := make(map[string]int)
+	for _, r := range this.ruler {
+		t := r.CsrNum()
+		a := r.ActiveCsrNum()
+		for name, num := range t {
+			if val, ok := mapTotal[name]; ok {
+				mapTotal[name] = val + num
+			} else {
+				mapTotal[name] = num
+			}
+		}
+		for name, num := range a {
+			if val, ok := mapActive[name]; ok {
+				mapActive[name] = val + num
+			} else {
+				mapActive[name] = num
+			}
+		}
+	}
+	for name, num := range mapTotal {
+		if act, ok := mapActive[name]; ok {
+			ret = append(ret, fmt.Sprintf("%d/%d(%s)", act, num, name))
+		} else {
+			ret = append(ret, fmt.Sprintf("%d/%d(%s)", 0, num, name))
+		}
+	}
+	return
 }

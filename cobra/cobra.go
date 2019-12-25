@@ -22,6 +22,7 @@ const (
 
 type Cobra struct {
 	Canal   *canal.Canal            `description:"从库对象"`
+	Http    *CobraHttp              `description:"用于内部交互的http服务"`
 	Rebase  bool                    `description:"是否重置监控点"`
 	Handler *Handler                `description:"处理对象"`
 	CobraDb *gorm.DB                `description:"眼镜蛇数据库"`
@@ -67,6 +68,10 @@ func MakeCobra() (c *Cobra, err error) {
 	c.ErrHr = cobraErrors.MakeErrHandler(sender, 10)
 	c.Handler.errHr = c.ErrHr
 	c.Log, err = cfg.LogCfg.GetLogger()
+	// 初始化http
+	web, err := CreateCobraHttp(cfg.Port)
+	web.AddRulePath(c.Handler)
+	c.Http = web
 	return
 }
 
@@ -187,6 +192,8 @@ func (c *Cobra) Run() error {
 func (c *Cobra) Close() {
 	c.Canal.Close()
 	c.Log.Debug("关闭binlog接收器")
+	c.Http.Close()
+	c.Log.Debug("关闭端口监听")
 	c.Handler.Stop()
 	c.Log.Debug("处理器关闭")
 	err := c.SavePosition()

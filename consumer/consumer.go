@@ -13,8 +13,10 @@ type Consumer interface {
 	Number() int
 	Open() error
 	Close() error
+	Reset() error
 	GetName() string
 	SetLogger(*log.Logger)
 	SetRuleNum(int)
 	GetRuleNum() int
+	IsClosed() bool
 }

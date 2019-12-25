@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/always-waiting/cobra-canal/cmd/gops"
+	"github.com/always-waiting/cobra-canal/cmd/rule"
 	"github.com/always-waiting/cobra-canal/cmd/systemctl"
 	"github.com/spf13/cobra"
 )
@@ -20,6 +21,7 @@ func Execute() {
 func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(systemctl.RootCmd)
+	rootCmd.AddCommand(rule.RootCmd)
 	rootCmd.AddCommand(gops.RootCmd)
 	rootCmd.AddCommand(runCmd)
 }

@@ -37,6 +37,10 @@ type ErrHandler struct {
 	confirm    chan bool
 }
 
+func (this *ErrHandler) Reset() {
+	this.errChannel = make(chan error, cap(this.errChannel))
+}
+
 func (this *ErrHandler) Push(input interface{}) {
 	if this.closed {
 		return

@@ -312,3 +312,46 @@ func (this *BasicRuler) ModifyErr(err error) (ret error) {
 	}
 	return
 }
+
+func (this *BasicRuler) Reset() error {
+	var err error
+	for _, c := range this.consumers {
+		if err = c.Reset(); err != nil {
+			break
+		}
+	}
+	if err != nil {
+		return err
+	}
+	this.isReady = false
+	this.closed = false
+	return nil
+}
+
+func (this *BasicRuler) IsClosed() bool {
+	return this.closed
+}
+
+func (this *BasicRuler) CsrNum() (ret map[string]int) {
+	ret = make(map[string]int)
+	for name, c := range this.consumers {
+		if num, ok := ret[name]; !ok {
+			ret[name] = c.ConsumerNum()
+		} else {
+			ret[name] = num + c.ConsumerNum()
+		}
+	}
+	return
+}
+
+func (this *BasicRuler) ActiveCsrNum() (ret map[string]int) {
+	ret = make(map[string]int)
+	for name, c := range this.consumers {
+		if num, ok := ret[name]; !ok {
+			ret[name] = c.ActiveConsumerNum()
+		} else {
+			ret[name] = num + c.ActiveConsumerNum()
+		}
+	}
+	return ret
+}
