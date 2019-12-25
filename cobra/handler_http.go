@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	REPORT_TEMPLATE = "%-15s\t%-15s\t%-15s\t%-15s\t%-15s"
+	REPORT_TEMPLATE = "%-30s\t%-15s\t%-15s\t%-15s\t%-15s"
 )
 
 func (h *Handler) ServeHTTPReport(rsp http.ResponseWriter, req *http.Request) {
