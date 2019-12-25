@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/always-waiting/cobra-canal/config"
@@ -217,4 +218,36 @@ func (this *Rule) ActiveRulerNum() int {
 		}
 	}
 	return num
+}
+
+func (this *Rule) ReportConsumer() (ret []string, err error) {
+	ret = make([]string, 0)
+	mapTotal := make(map[string]int)
+	mapActive := make(map[string]int)
+	for _, r := range this.ruler {
+		t := r.CsrNum()
+		a := r.ActiveCsrNum()
+		for name, num := range t {
+			if val, ok := mapTotal[name]; ok {
+				mapTotal[name] = val + num
+			} else {
+				mapTotal[name] = num
+			}
+		}
+		for name, num := range a {
+			if val, ok := mapActive[name]; ok {
+				mapActive[name] = val + num
+			} else {
+				mapActive[name] = num
+			}
+		}
+	}
+	for name, num := range mapTotal {
+		if act, ok := mapActive[name]; ok {
+			ret = append(ret, fmt.Sprintf("%d/%d(%s)", act, num, name))
+		} else {
+			ret = append(ret, fmt.Sprintf("%d/%d(%s)", 0, num, name))
+		}
+	}
+	return
 }

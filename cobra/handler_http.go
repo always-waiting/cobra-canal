@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	REPORT_TEMPLATE = "%-15s\t%-15s\t%-15s\t%-15s"
+	REPORT_TEMPLATE = "%-15s\t%-15s\t%-15s\t%-15s\t%-15s"
 )
 
 func (h *Handler) ServeHTTPReport(rsp http.ResponseWriter, req *http.Request) {
@@ -28,7 +28,7 @@ func (h *Handler) ServeHTTPReport(rsp http.ResponseWriter, req *http.Request) {
 func (h *Handler) reportRule(name string) (ret []byte, err error) {
 	var info string
 	lineSep := "\n"
-	head := []interface{}{"name", "aggreable", "closed", "ruler"}
+	head := []interface{}{"name", "aggreable", "closed", "ruler", "consumer"}
 	report := []string{fmt.Sprintf(REPORT_TEMPLATE, head...)}
 	for _, r := range h.Rules {
 		if name == r.GetName() || name == "all" {
@@ -37,6 +37,11 @@ func (h *Handler) reportRule(name string) (ret []byte, err error) {
 			cols = append(cols, fmt.Sprintf("%v", r.IsAggre()))
 			cols = append(cols, fmt.Sprintf("%v", r.IsClosed()))
 			cols = append(cols, fmt.Sprintf("%d/%d", r.ActiveRulerNum(), r.RulerNum()))
+			csrInfo, err := r.ReportConsumer()
+			if err != nil {
+				return nil, err
+			}
+			cols = append(cols, strings.Join(csrInfo, ","))
 			report = append(report, fmt.Sprintf(REPORT_TEMPLATE, cols...))
 			if name != "all" {
 				break

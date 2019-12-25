@@ -18,4 +18,5 @@ type Consumer interface {
 	SetLogger(*log.Logger)
 	SetRuleNum(int)
 	GetRuleNum() int
+	IsClosed() bool
 }

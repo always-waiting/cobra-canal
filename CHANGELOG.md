@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - 添加web服务，为运行中修改同步行为提供支持
+- 提供程序运行基本报告
 ### Changed
 - 配置包使用viper
 - 处理mysql链接空闲过长断开问题
