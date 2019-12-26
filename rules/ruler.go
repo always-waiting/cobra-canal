@@ -14,6 +14,8 @@ type httpAction interface {
 
 type Ruler interface {
 	httpAction
+	GetDesc() string
+	SetDesc(string)
 	Start()
 	Close() error
 	HandleEvent(event.Event) error

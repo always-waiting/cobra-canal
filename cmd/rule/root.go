@@ -19,6 +19,7 @@ func init() {
 	RootCmd.AddCommand(stopCmd)
 	RootCmd.AddCommand(startCmd)
 	RootCmd.AddCommand(reportCmd)
+	RootCmd.AddCommand(listCmd)
 }
 
 const (

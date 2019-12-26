@@ -20,6 +20,7 @@ const (
 
 type BasicRuler struct {
 	name             string
+	desc             string
 	number           int
 	aggregator       config.Aggregatable
 	consumers        map[string]*consumer.Consume
@@ -68,6 +69,17 @@ func (this *BasicRuler) SetLogger(l *log.Logger) {
 
 func (this *BasicRuler) GetNumber() int {
 	return this.number
+}
+
+func (this *BasicRuler) GetDesc() string {
+	if this.desc == "" {
+		return "规则简单说明"
+	}
+	return this.desc
+}
+
+func (this *BasicRuler) SetDesc(desc string) {
+	this.desc = desc
 }
 
 func (this *BasicRuler) SetNumber(i int) {
