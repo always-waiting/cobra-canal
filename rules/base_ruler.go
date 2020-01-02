@@ -133,6 +133,14 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 	return
 }
 
+func (this *BasicRuler) DBLock() {
+	this.dbLock.Lock()
+}
+
+func (this *BasicRuler) DBUnlock() {
+	this.dbLock.Unlock()
+}
+
 func (this *BasicRuler) DBExecute(cmd string, args ...interface{}) (*mysql.Result, error) {
 	defer this.dbLock.Unlock()
 	this.dbLock.Lock()
