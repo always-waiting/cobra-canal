@@ -6,8 +6,8 @@ Cobra-Canal根据用户自定的规则，对事件进行过滤，同时根据用
 
 # Table of Contents
 
-- [Overview]
-- [Concepts]
+- [Overview](#overview)
+- [Concepts](#concepts)
 
 # Overview
 Cobra-Canal是一个binlog监控框架，基于[canal](https://github.com/siddontang/go-mysql)项目进行日志获取与解析。
