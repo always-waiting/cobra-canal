@@ -91,7 +91,12 @@ func (b *BaseConsumer) Reset() error {
 	return nil
 }
 
-func (b *BaseConsumer) Transfer(events []event.Event) (interface{}, error) {
+func (b *BaseConsumer) Transfer(events []event.Event) (data interface{}, err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = errors.Errorf("消费器Transfer未知错误:%v", e)
+		}
+	}()
 	if b.transferFunc != nil {
 		return b.transferFunc(events)
 	}

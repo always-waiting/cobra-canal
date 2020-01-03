@@ -206,6 +206,11 @@ func (this *BasicRuler) Close() (err error) {
 }
 
 func (this *BasicRuler) HandleEvent(e event.Event) (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = errors.New(fmt.Sprintf("规则HandleEvent未知错误:%v", e))
+		}
+	}()
 	// 应用过滤规则
 	flag, err := this.Filter(&e)
 	if err != nil || !flag {
