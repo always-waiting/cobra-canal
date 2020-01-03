@@ -18,6 +18,7 @@ type BaseConsumer struct {
 	number       int
 	rulerNum     int
 	transferFunc func([]event.Event) (interface{}, error)
+	solveFunc    func(interface{}) error
 	Log          *log.Logger
 	closed       bool
 }
@@ -91,7 +92,12 @@ func (b *BaseConsumer) Reset() error {
 	return nil
 }
 
-func (b *BaseConsumer) Transfer(events []event.Event) (interface{}, error) {
+func (b *BaseConsumer) Transfer(events []event.Event) (data interface{}, err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = errors.Errorf("消费器Transfer未知错误:%v", e)
+		}
+	}()
 	if b.transferFunc != nil {
 		return b.transferFunc(events)
 	}
@@ -103,8 +109,20 @@ func (b *BaseConsumer) SetTransferFunc(f func([]event.Event) (interface{}, error
 	b.transferFunc = f
 }
 
-func (b *BaseConsumer) Solve(data interface{}) error {
-	return nil
+func (b *BaseConsumer) SetSolveFunc(f func(interface{}) error) {
+	b.solveFunc = f
+}
+
+func (b *BaseConsumer) Solve(data interface{}) (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = errors.Errorf("消费器Solve未知错误:%v", e)
+		}
+	}()
+	if b.solveFunc != nil {
+		return b.solveFunc(data)
+	}
+	return
 }
 
 func (b BaseConsumer) MergeErr(err1, err2 error) (retErr error) {

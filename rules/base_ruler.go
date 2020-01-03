@@ -12,6 +12,7 @@ import (
 	"github.com/siddontang/go-log/log"
 	"github.com/siddontang/go-mysql/client"
 	"github.com/siddontang/go-mysql/mysql"
+	"github.com/siddontang/go-mysql/schema"
 )
 
 const (
@@ -20,6 +21,7 @@ const (
 
 type BasicRuler struct {
 	name             string
+	desc             string
 	number           int
 	aggregator       config.Aggregatable
 	consumers        map[string]*consumer.Consume
@@ -70,6 +72,17 @@ func (this *BasicRuler) GetNumber() int {
 	return this.number
 }
 
+func (this *BasicRuler) GetDesc() string {
+	if this.desc == "" {
+		return "规则简单说明"
+	}
+	return this.desc
+}
+
+func (this *BasicRuler) SetDesc(desc string) {
+	this.desc = desc
+}
+
 func (this *BasicRuler) SetNumber(i int) {
 	this.number = i
 }
@@ -118,6 +131,21 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 			return
 		}
 	}
+	return
+}
+
+func (this *BasicRuler) DBLock() {
+	this.dbLock.Lock()
+}
+
+func (this *BasicRuler) DBUnlock() {
+	this.dbLock.Unlock()
+}
+
+func (this *BasicRuler) GetTableSchema(db, table string) (ret *schema.Table, err error) {
+	defer this.dbLock.Unlock()
+	this.dbLock.Lock()
+	ret, err = schema.NewTable(this.DBClient, db, table)
 	return
 }
 
@@ -178,6 +206,11 @@ func (this *BasicRuler) Close() (err error) {
 }
 
 func (this *BasicRuler) HandleEvent(e event.Event) (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = errors.New(fmt.Sprintf("规则HandleEvent未知错误:%v", e))
+		}
+	}()
 	// 应用过滤规则
 	flag, err := this.Filter(&e)
 	if err != nil || !flag {

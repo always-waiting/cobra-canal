@@ -1,0 +1,26 @@
+[canal]
+addr = "localhost:3306"
+user = "root"
+password = "abc123"
+server_id = 20000000
+include_table_regex = ["db_cmdb\\..*"]
+
+[mysql]
+addr = "localhost:3306"
+user = "root"
+password = "abc123"
+db = "db_cmdb_cobra"
+
+[log]
+level="debug"
+
+[[rules]]
+name="test"
+reply_sync=["OnRow"]
+[rules.log]
+level="debug"
+[[rules.consumer]]
+type="print"
+app="/tmp/test.print.txt"
+[rules.consumer.log]
+level="debug"

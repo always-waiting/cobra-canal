@@ -35,11 +35,24 @@ var ruleMakers = map[string]func(config.RuleConfig) (Ruler, error){
 	"fake": func(cfg config.RuleConfig) (Ruler, error) {
 		r := &BasicRuler{}
 		r.SetName("fake")
+		r.SetDesc("fake规则，没有任何过滤判断")
 		r.AddFilterFunc(func(e *event.Event) (bool, error) {
 			return true, nil
 		})
 		return r, nil
 	},
+}
+
+func GetRuleMakerBaseInfo() [][]interface{} {
+	ret := make([][]interface{}, 0)
+	for key, f := range ruleMakers {
+		info := []interface{}{key}
+		r, _ := f(config.RuleConfig{})
+		desc := r.GetDesc()
+		info = append(info, desc)
+		ret = append(ret, info)
+	}
+	return ret
 }
 
 func RegisterRuleMaker(name string, f func(config.RuleConfig) (Ruler, error)) {
