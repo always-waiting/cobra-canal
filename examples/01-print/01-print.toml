@@ -11,9 +11,16 @@ user = "root"
 password = "abc123"
 db = "db_cmdb_cobra"
 
+[log]
+level="debug"
+
 [[rules]]
 name="test"
 reply_sync=["OnRow"]
+[rules.log]
+level="debug"
 [[rules.consumer]]
 type="print"
 app="/tmp/test.print.txt"
+[rules.consumer.log]
+level="debug"
