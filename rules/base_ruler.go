@@ -12,6 +12,7 @@ import (
 	"github.com/siddontang/go-log/log"
 	"github.com/siddontang/go-mysql/client"
 	"github.com/siddontang/go-mysql/mysql"
+	"github.com/siddontang/go-mysql/schema"
 )
 
 const (
@@ -139,6 +140,13 @@ func (this *BasicRuler) DBLock() {
 
 func (this *BasicRuler) DBUnlock() {
 	this.dbLock.Unlock()
+}
+
+func (this *BasicRuler) GetTableSchema(db, table string) (ret *schema.Table, err error) {
+	defer this.dbLock.Unlock()
+	this.dbLock.Lock()
+	ret, err = schema.NewTable(this.DBClient, db, table)
+	return
 }
 
 func (this *BasicRuler) DBExecute(cmd string, args ...interface{}) (*mysql.Result, error) {
