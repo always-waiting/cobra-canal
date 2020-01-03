@@ -63,7 +63,7 @@ func (c *printConsumer) Close() (err error) {
 	return c.fileIo.Close()
 }
 
-func (c *printConsumer) Solve(i interface{}) (err error) {
+func (c *printConsumer) solve(i interface{}) (err error) {
 	content, ok := i.([]byte)
 	if !ok {
 		err = errors.New("转换为[]byte错误")
@@ -77,6 +77,7 @@ func makeconsumer(cfg *config.ConsumerConfig) (ret consumer.Consumer, err error)
 	c := new(printConsumer)
 	c.file = cfg.App
 	c.SetName(cfg.Type)
+	c.SetSolveFunc(c.solve)
 	ret = c
 	return
 }
