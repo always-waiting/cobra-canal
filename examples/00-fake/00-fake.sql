@@ -1,6 +1,6 @@
-CREATE DATABASE `db_cmdb_cobra`;
+CREATE DATABASE `db_cmdb_cobra_test`;
 
-USE `db_cmdb_cobra`;
+USE `db_cmdb_cobra_test`;
 
 CREATE TABLE `t_positions` (
   `service_id` int(11) NOT NULL COMMENT '从库id',
@@ -29,6 +29,6 @@ CREATE TABLE `t_test` (
   `is_delete` tinyint(1) NOT NULL DEFAULT '0' COMMENT '软删除标记',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_device_sn` (`device_sn`),
-  KEY `idx_device_sn` (`device_sn`),
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='用于存储跟踪位置';
+  KEY `idx_device_sn` (`device_sn`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='测试表';
 
