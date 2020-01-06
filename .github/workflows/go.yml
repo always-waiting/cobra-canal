@@ -42,3 +42,18 @@ jobs:
 
     - name: Install service
       run: sudo ./main systemctl install --config examples/00-fake/00-fake.toml --service test --description "测试"
+
+    - name: Start service
+      run: sudo ./main systemctl start --service test
+
+    - name: Status service
+      run: sudo ./main systemctl status --service test
+
+    - name: Stop service
+      run: sudo ./main systemctl stop --service test
+
+    - name: Status service
+      run: sudo ./main systemctl status --service test
+
+    - name: Check DB
+        mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 -e "use db_cmdb_cobra;select * from t_positions;" | cat
