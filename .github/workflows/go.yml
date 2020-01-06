@@ -14,12 +14,6 @@ jobs:
             - 3306
             options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     steps:
-    - name: Setting Up DB
-      run: |
-        sudo apt-get install -y mysql-client
-        mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 < examples/00-fake/00-fake.sql
-        mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 -e "SHOW DATABASES;show create table db_cmdb_cobra.t_positions;show create table db_test.t_test;"
-
     - name: Set up Go 1.13
       uses: actions/setup-go@v1
       with:
@@ -36,6 +30,12 @@ jobs:
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
             dep ensure
         fi
+
+    - name: Setting Up DB
+      run: |
+        sudo apt-get install -y mysql-client
+        mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 < examples/00-fake/00-fake.sql
+        mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 -e "SHOW DATABASES;show create table db_cmdb_cobra.t_positions;show create table db_test.t_test;"
 
     - name: Build
       run: go build -v examples/00-fake/main.go
