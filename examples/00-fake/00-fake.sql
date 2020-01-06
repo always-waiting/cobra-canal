@@ -1,6 +1,6 @@
-CREATE DATABASE `db_cmdb_cobra_test`;
+CREATE DATABASE `db_cmdb_cobra`;
 
-USE `db_cmdb_cobra_test`;
+USE `db_cmdb_cobra`;
 
 CREATE TABLE `t_positions` (
   `service_id` int(11) NOT NULL COMMENT '从库id',
