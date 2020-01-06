@@ -56,4 +56,4 @@ jobs:
       run: sudo ./main systemctl status --service test
 
     - name: Check DB
-        mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 -e "use db_cmdb_cobra;select * from t_positions;" | cat
+      run: mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 -e "use db_cmdb_cobra;select * from t_positions;" | cat
