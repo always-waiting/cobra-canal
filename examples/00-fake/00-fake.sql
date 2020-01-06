@@ -12,7 +12,7 @@ CREATE TABLE `t_positions` (
   UNIQUE KEY `service_id_UNIQUE` (`service_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='用于存储跟踪位置';
 
-CREATRE DATABASE `db_test`;
+CREATE DATABASE `db_test`;
 
 USE `db_test`;
 

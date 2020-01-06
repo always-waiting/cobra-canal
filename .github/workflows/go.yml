@@ -39,3 +39,6 @@ jobs:
 
     - name: Build
       run: go build -v examples/00-fake/main.go
+
+    - name: Install service
+      run: ./main systemctl install --config examples/00-fake/00-fake.toml --service test --description "测试"
