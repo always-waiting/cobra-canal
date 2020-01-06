@@ -35,7 +35,7 @@ jobs:
       run: |
         sudo apt-get install -y mysql-client
         mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 < examples/00-fake/00-fake.sql
-        mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 -e "SHOW DATABASES;show create table db_cmdb_cobra.t_positions;show create table db_test.t_test;" | cat
+        mysql --host localhost --port 3306 -uroot -pabc123 -e "SHOW DATABASES;show create table db_cmdb_cobra.t_positions;show create table db_test.t_test;" | cat
 
     - name: Build
       run: go build -v examples/00-fake/main.go
