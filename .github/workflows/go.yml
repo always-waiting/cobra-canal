@@ -11,7 +11,7 @@ jobs:
             env:
                 MYSQL_ROOT_PASSWORD: abc123
             ports:
-            - 3306
+                - 3306:13306
             options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     steps:
     - name: Set up Go 1.13
@@ -35,7 +35,7 @@ jobs:
       run: |
         sudo apt-get install -y mysql-client
         mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 < examples/00-fake/00-fake.sql
-        mysql --host localhost --port 3306 -uroot -pabc123 -e "SHOW DATABASES;show create table db_cmdb_cobra.t_positions;show create table db_test.t_test;" | cat
+        mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 -e "SHOW DATABASES;show create table db_cmdb_cobra.t_positions;show create table db_test.t_test;" | cat
 
     - name: Build
       run: go build -v examples/00-fake/main.go
