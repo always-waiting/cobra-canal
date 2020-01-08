@@ -1,12 +1,12 @@
 [canal]
-addr = "localhost:3306"
+addr = "127.0.0.1:13306"
 user = "root"
 password = "abc123"
 server_id = 10000000
-include_table_regex = ["db_cmdb\\..*"]
+include_table_regex = ["db_test\\..*"]
 
 [mysql]
-addr = "localhost:3306"
+addr = "127.0.0.1:13306"
 user = "root"
 password = "abc123"
 db = "db_cmdb_cobra"

@@ -5,8 +5,15 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    services:
+        mysql:
+            image: mysql:5.7
+            env:
+                MYSQL_ROOT_PASSWORD: abc123
+            ports:
+                - 13306:3306
+            options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     steps:
-
     - name: Set up Go 1.13
       uses: actions/setup-go@v1
       with:
@@ -24,5 +31,29 @@ jobs:
             dep ensure
         fi
 
+    - name: Setting Up DB
+      run: |
+        sudo apt-get install -y mysql-client
+        mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 < examples/00-fake/00-fake.sql
+        mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 -e "SHOW DATABASES;show create table db_cmdb_cobra.t_positions;show create table db_test.t_test;" | cat
+
     - name: Build
       run: go build -v examples/00-fake/main.go
+
+    - name: Install service
+      run: sudo ./main systemctl install --config examples/00-fake/00-fake.toml --service test --description "测试"
+
+    - name: Start service
+      run: sudo ./main systemctl start --service test
+
+    - name: Status service
+      run: sudo ./main systemctl status --service test
+
+    - name: Stop service
+      run: sudo ./main systemctl stop --service test
+
+    - name: Status service
+      run: sudo ./main systemctl status --service test
+
+    - name: Check DB
+      run: mysql --host 127.0.0.1 --port ${{ job.services.mysql.ports['3306'] }} -uroot -pabc123 -e "use db_cmdb_cobra;select * from t_positions;" | cat
