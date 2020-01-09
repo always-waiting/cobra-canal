@@ -29,4 +29,6 @@ type Ruler interface {
 	IsClosed() bool
 	CsrNum() map[string]int
 	ActiveCsrNum() map[string]int
+	CsrPoolCap() map[string]int
+	CsrPoolLen() map[string]int
 }

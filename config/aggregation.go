@@ -19,6 +19,8 @@ type Aggregatable interface {
 	DiffData(*IdxRuleConfig, map[string]interface{}, map[string]interface{}) (map[string]interface{}, error)
 	Stop()
 	Reset()
+	GetKeyNum() int
+	GetTimeDuration() string
 }
 
 func makeDefaultAggregator(r *RuleConfig) *Aggregator {
@@ -33,6 +35,14 @@ type Aggregator struct {
 	cfgMap        map[string]IdxRuleConfig
 	CIdxGenerator func(event.Event) (string, error)
 	Collector     *Collector
+}
+
+func (b *Aggregator) GetKeyNum() int {
+	return len(b.Collector.Data)
+}
+
+func (b *Aggregator) GetTimeDuration() string {
+	return fmt.Sprintf("%v", b.Collector.Interval)
 }
 
 func (b *Aggregator) Stop() {
