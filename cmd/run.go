@@ -42,7 +42,7 @@ func runCmdRun(cmd *cobra.Command, args []string) {
 	log.Info("binlog监控器生成完毕")
 	sigs := make(chan os.Signal, 1)
 	done := make(chan bool, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 	LOOP1:
 		for {
@@ -53,12 +53,6 @@ func runCmdRun(cmd *cobra.Command, args []string) {
 					log.Info("开始关闭监控程序")
 					agent.Close()
 					break LOOP1
-				case syscall.SIGUSR1:
-					log.Info("开启debug")
-					agent.Listen(agent.Options{})
-				case syscall.SIGUSR2:
-					log.Info("关闭debug")
-					agent.Close()
 				default:
 					log.Info(signalGet)
 				}

@@ -275,3 +275,11 @@ func (this *Consume) ActiveConsumerNum() int {
 	}
 	return num
 }
+
+func (this *Consume) PoolCap() int {
+	return cap(this.eventsChan)
+}
+
+func (this *Consume) PoolLen() int {
+	return len(this.eventsChan)
+}

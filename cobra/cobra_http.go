@@ -2,6 +2,7 @@ package cobra
 
 import (
 	"fmt"
+	"github.com/google/gops/agent"
 	"net/http"
 )
 
@@ -30,7 +31,17 @@ func (this *CobraHttp) AddRulePath(h *Handler) (err error) {
 		this.Mux.HandleFunc(fmt.Sprintf("/rules/%s/start", r.GetName()), r.ServeHTTPStart)
 	}
 	this.Mux.HandleFunc("/rules/report", h.ServeHTTPReport)
+	this.Mux.HandleFunc("/gops/debug/start", debugStart)
+	this.Mux.HandleFunc("/gops/debug/stop", debugStop)
 	return nil
+}
+
+func debugStart(rsp http.ResponseWriter, req *http.Request) {
+	agent.Listen(agent.Options{})
+}
+
+func debugStop(rsp http.ResponseWriter, req *http.Request) {
+	agent.Close()
 }
 
 func (this *CobraHttp) Run() error {

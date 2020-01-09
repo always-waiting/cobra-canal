@@ -37,8 +37,5 @@ func reportCmdRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
-	if rulename != "all" {
-		fmt.Println("可以开发新的专门获取规则详情的命令，目前先以简介为基础")
-	}
 	fmt.Println(string(body))
 }

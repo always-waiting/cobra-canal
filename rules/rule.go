@@ -106,6 +106,14 @@ func InitRule(cfg config.RuleConfig) (rule Rule, err error) {
 	return
 }
 
+func (this *Rule) PoolCap() int {
+	return cap(this.eventChannel)
+}
+
+func (this *Rule) PoolLen() int {
+	return len(this.eventChannel)
+}
+
 func (this *Rule) SetName(name string) {
 	this.name = name
 }
@@ -263,4 +271,22 @@ func (this *Rule) ReportConsumer() (ret []string, err error) {
 		}
 	}
 	return
+}
+
+func (this *Rule) GetRulers() []Ruler {
+	return this.ruler
+}
+
+func (this *Rule) GetAggreKeyNum() int {
+	if this.aggregator != nil {
+		return this.aggregator.GetKeyNum()
+	}
+	return 0
+}
+
+func (this *Rule) GetAggreDuration() string {
+	if this.aggregator != nil {
+		return this.aggregator.GetTimeDuration()
+	}
+	return ""
 }

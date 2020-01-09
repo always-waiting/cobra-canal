@@ -2,6 +2,7 @@ package gops
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/always-waiting/cobra-canal/helps"
 	"github.com/spf13/cobra"
@@ -10,28 +11,23 @@ import (
 var stopDebugCmd = &cobra.Command{
 	Use:     "stopDebug",
 	Short:   "开启debug模式",
-	Version: "1.0.0",
+	Version: "2.0.0",
 	Run:     stopDebugCmdRun,
 }
 
 func stopDebugCmdRun(cmd *cobra.Command, args []string) {
 	pid, _ := cmd.Flags().GetString("pid")
-	if pid == "" {
-		name, _ := cmd.Flags().GetString("service")
-		name = SERVICE_PREFIX + name
-		var err error
-		pid, err = helps.GetPidByServiceName(name)
-		if err != nil {
-			panic(err)
-		}
-	}
-	exitStatus, output, err := helps.RunCommand("kill", true, "-12", pid)
-	if exitStatus != 0 || err != nil {
+	port, err := helps.GetPortByPid(pid)
+	if err != nil {
 		panic(err)
 	}
-	fmt.Printf(SUCCESS1, "stopDebug")
-	if output != "" {
-		fmt.Println(output)
+	Addr := fmt.Sprintf("http://127.0.0.1:%s/gops/debug/stop", port)
+	req, _ := http.NewRequest("GET", Addr, nil)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
 	}
-
+	defer resp.Body.Close()
+	fmt.Printf(SUCCESS1, "stopDebug")
 }

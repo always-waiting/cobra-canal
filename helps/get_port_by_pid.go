@@ -35,10 +35,10 @@ func GetPortByPid(pid string) (ret string, err error) {
 		return
 	}
 	reg := regexp.MustCompile(`\d{3}\.0\.0\.1:(\d+)`)
-	matches := reg.FindSubmatch(get)
+	matches := reg.FindAllSubmatch(get, -1)
 	if len(matches) == 0 {
 		return
 	}
-	ret = string(matches[1])
+	ret = string(matches[len(matches)-1][1])
 	return
 }

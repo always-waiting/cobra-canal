@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - 配置包使用viper
 - 处理mysql链接空闲过长断开问题
+- 修改rule report命令逻辑，对具体规则，给出详细报告
+- 修改gops命令为http接口形式，为了适配window
 
 ## [1.1.1] 2019-12-16
 ### Added

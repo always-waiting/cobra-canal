@@ -388,3 +388,27 @@ func (this *BasicRuler) ActiveCsrNum() (ret map[string]int) {
 	}
 	return ret
 }
+
+func (this *BasicRuler) CsrPoolCap() (ret map[string]int) {
+	ret = make(map[string]int)
+	for name, c := range this.consumers {
+		if num, ok := ret[name]; !ok {
+			ret[name] = c.PoolCap()
+		} else {
+			ret[name] = num + c.PoolCap()
+		}
+	}
+	return
+}
+
+func (this *BasicRuler) CsrPoolLen() (ret map[string]int) {
+	ret = make(map[string]int)
+	for name, c := range this.consumers {
+		if num, ok := ret[name]; !ok {
+			ret[name] = c.PoolLen()
+		} else {
+			ret[name] = num + c.PoolLen()
+		}
+	}
+	return
+}
