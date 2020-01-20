@@ -19,7 +19,7 @@ const (
 )
 
 func init() {
-	RootCmd.PersistentFlags().String("pid", "", "相应查看的pid号")
+	RootCmd.PersistentFlags().String("pid", "", "程序的pid号")
 	RootCmd.AddCommand(startDebugCmd)
 	RootCmd.AddCommand(stopDebugCmd)
 	RootCmd.MarkPersistentFlagRequired("pid")

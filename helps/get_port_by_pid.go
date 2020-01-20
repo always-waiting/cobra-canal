@@ -1,12 +1,19 @@
 package helps
 
 import (
+	"errors"
 	"io/ioutil"
 	"os/exec"
 	"regexp"
+
+	"github.com/spf13/cobra"
 )
 
 func GetPortByPid(pid string) (ret string, err error) {
+	if pid == "" {
+		err = errors.New("pid不能为空")
+		return
+	}
 	cmds := make([]*exec.Cmd, 0)
 	cmds = append(cmds, exec.Command("netstat", "-nltp"))
 	cmds = append(cmds, exec.Command("grep", pid))
@@ -40,5 +47,24 @@ func GetPortByPid(pid string) (ret string, err error) {
 		return
 	}
 	ret = string(matches[len(matches)-1][1])
+	return
+}
+
+func GetPort(cmd *cobra.Command) (port string, err error) {
+	port, _ = cmd.Flags().GetString("port")
+	if port == "" {
+		pid, _ := cmd.Flags().GetString("pid")
+		if pid == "" {
+			err = errors.New(ERR9)
+			return
+		}
+		if port, err = GetPortByPid(pid); err != nil {
+			return
+		}
+		if port == "" {
+			err = errors.New(ERR10)
+			return
+		}
+	}
 	return
 }

@@ -17,6 +17,8 @@ const (
 	ERR6             = "service(%s) not exists"
 	ERR7             = "未知错误(%v)"
 	ERR8             = "不能匹配到信息(%s)"
+	ERR9             = "port和pid必须提供一个"
+	ERR10            = "没有发现监听的端口"
 	PID_MATCH_STRING = `Main PID: (\d+)`
 )
 

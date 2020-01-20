@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- 增加binlog运行位置信息记录展示命令
+- 优化单个规则返回报告格式
 
 ## [1.1.2] 2020-01-09
 ### Added

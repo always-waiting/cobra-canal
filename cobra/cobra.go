@@ -72,6 +72,7 @@ func MakeCobra() (c *Cobra, err error) {
 	web, err := CreateCobraHttp(cfg.Port)
 	web.AddRulePath(c.Handler)
 	c.Http = web
+	web.cobra = c
 	return
 }
 

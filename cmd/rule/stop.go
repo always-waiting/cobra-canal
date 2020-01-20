@@ -5,6 +5,7 @@ import (
 
 	"net/http"
 
+	"github.com/always-waiting/cobra-canal/helps"
 	"github.com/spf13/cobra"
 )
 
@@ -21,12 +22,13 @@ func init() {
 }
 
 func stopCmdRun(cmd *cobra.Command, args []string) {
-	port, err := getPort(cmd)
+	port, err := helps.GetPort(cmd)
 	if err != nil {
 		panic(err)
 	}
 	rulename, _ := cmd.Flags().GetString("rule")
-	Addr := fmt.Sprintf("http://127.0.0.1:%s/rules/%s/stop", port, rulename)
+	host, _ := cmd.Flags().GetString("host")
+	Addr := fmt.Sprintf("http://%s:%s/rules/%s/stop", host, port, rulename)
 	req, _ := http.NewRequest("GET", Addr, nil)
 	client := &http.Client{}
 	resp, err := client.Do(req)
