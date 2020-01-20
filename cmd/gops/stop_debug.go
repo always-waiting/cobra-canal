@@ -16,8 +16,7 @@ var stopDebugCmd = &cobra.Command{
 }
 
 func stopDebugCmdRun(cmd *cobra.Command, args []string) {
-	pid, _ := cmd.Flags().GetString("pid")
-	port, err := helps.GetPortByPid(pid)
+	port, err := helps.GetPort(cmd)
 	if err != nil {
 		panic(err)
 	}

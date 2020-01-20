@@ -19,14 +19,15 @@ const (
 )
 
 func init() {
-	RootCmd.PersistentFlags().String("pid", "", "程序的pid号")
 	RootCmd.AddCommand(startDebugCmd)
 	RootCmd.AddCommand(stopDebugCmd)
-	RootCmd.MarkPersistentFlagRequired("pid")
 }
 
 func rootCmdRun(cmd *cobra.Command, args []string) {
 	pid, _ := cmd.Flags().GetString("pid")
+	if pid == "" {
+		panic("pid不能为空")
+	}
 	exitStatus, output, err := helps.RunCommand("gops", true, pid)
 	if exitStatus != 0 || err != nil {
 		panic(err)
