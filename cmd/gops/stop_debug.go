@@ -21,7 +21,8 @@ func stopDebugCmdRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
-	Addr := fmt.Sprintf("http://127.0.0.1:%s/gops/debug/stop", port)
+	host, _ := cmd.Flags().GetString("host")
+	Addr := fmt.Sprintf("http://%s:%s/gops/debug/stop", host, port)
 	req, _ := http.NewRequest("GET", Addr, nil)
 	client := &http.Client{}
 	resp, err := client.Do(req)
