@@ -27,7 +27,13 @@ func reportCmdRun(cmd *cobra.Command, args []string) {
 	}
 	rulename, _ := cmd.Flags().GetString("rule")
 	host, _ := cmd.Flags().GetString("host")
-	Addr := fmt.Sprintf("http://%s:%s/rules/report?rule=%s", host, port, rulename)
+	pretty, _ := cmd.Flags().GetBool("pretty")
+	var Addr string
+	if pretty {
+		Addr = fmt.Sprintf("http://%s:%s/rules/report?pretty&rule=%s", host, port, rulename)
+	} else {
+		Addr = fmt.Sprintf("http://%s:%s/rules/report?rule=%s", host, port, rulename)
+	}
 	req, _ := http.NewRequest("GET", Addr, nil)
 	client := &http.Client{}
 	resp, err := client.Do(req)

@@ -1,4 +1,4 @@
-package consumer
+package consumes
 
 import (
 	"github.com/always-waiting/cobra-canal/event"

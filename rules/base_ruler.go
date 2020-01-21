@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/always-waiting/cobra-canal/config"
-	"github.com/always-waiting/cobra-canal/consumer"
+	"github.com/always-waiting/cobra-canal/consumes"
 	"github.com/always-waiting/cobra-canal/event"
 
 	"github.com/juju/errors"
@@ -24,7 +24,7 @@ type BasicRuler struct {
 	desc             string
 	number           int
 	aggregator       config.Aggregatable
-	consumers        map[string]*consumer.Consume
+	consumers        map[string]*consumes.Consume
 	DBClient         *client.Conn
 	mysqlCfg         *config.MysqlConfig
 	dbLock           sync.Mutex
@@ -108,9 +108,9 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 		this.Log.Info("构建fake消费器......")
 		ruleCfg.ConsumerCfg = append(ruleCfg.ConsumerCfg, &config.ConsumerConfig{})
 	}
-	this.consumers = make(map[string]*consumer.Consume)
+	this.consumers = make(map[string]*consumes.Consume)
 	for _, consumerCfg := range ruleCfg.ConsumerCfg {
-		if consume, err := consumer.CreateConsume(consumerCfg); err != nil {
+		if consume, err := consumes.CreateConsume(consumerCfg); err != nil {
 			return err
 		} else {
 			if f, ok := this.transferFunc[consume.GetName()]; ok {
@@ -278,7 +278,7 @@ func (this *BasicRuler) CloseConsume() {
 	var wg sync.WaitGroup
 	for _, consume := range this.consumers {
 		wg.Add(1)
-		go func(c *consumer.Consume) {
+		go func(c *consumes.Consume) {
 			c.Close()
 			wg.Done()
 		}(consume)
@@ -290,7 +290,7 @@ func (this *BasicRuler) Push(events []event.Event) {
 	var wg sync.WaitGroup
 	for _, consume := range this.consumers {
 		wg.Add(1)
-		go func(c *consumer.Consume) {
+		go func(c *consumes.Consume) {
 			this.Log.Debugf("Rule%d: %s规则向%s消费池推送事件包", this.number, this.name, c.GetName())
 			c.Push(events)
 			wg.Done()
