@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - 增加binlog运行位置信息记录展示命令
 - 优化单个规则返回报告格式
+- 忽略错误处理向关闭的管道发送信息时产生的panic
+- 优化程序内建服务关闭顺序，使命令在关闭期间可用
 
 ## [1.1.2] 2020-01-09
 ### Added

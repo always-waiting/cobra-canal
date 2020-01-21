@@ -193,7 +193,6 @@ func (c *Cobra) Run() error {
 func (c *Cobra) Close() {
 	c.Canal.Close()
 	c.Log.Debug("关闭binlog接收器")
-	c.Http.Close()
 	c.Log.Debug("关闭端口监听")
 	c.Handler.Stop()
 	c.Log.Debug("处理器关闭")
@@ -204,5 +203,6 @@ func (c *Cobra) Close() {
 		c.Log.Debug("保存监控点")
 	}
 	c.ErrHr.Close()
+	c.Http.Close()
 	c.Log.Debug("关闭cobra&handler的错误处理器")
 }

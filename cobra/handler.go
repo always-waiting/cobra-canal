@@ -1,12 +1,13 @@
 package cobra
 
 import (
+	"sync"
+
 	"github.com/always-waiting/cobra-canal/config"
 	cobraErrors "github.com/always-waiting/cobra-canal/errors"
 	"github.com/always-waiting/cobra-canal/event"
 	"github.com/always-waiting/cobra-canal/rules"
 	"github.com/siddontang/go-log/log"
-	"sync"
 
 	"github.com/juju/errors"
 	"github.com/siddontang/go-mysql/canal"
@@ -86,7 +87,7 @@ func (h *Handler) OnRow(e *canal.RowsEvent) error {
 		h.errHr.Push(err)
 		return nil
 	}
-	h.Log.Debug("把合法事件，放入事件池")
+	h.Log.Debug("把合法事件，放入事件buffer池")
 	for _, event := range cobraRowEvents {
 		if event.Err != nil {
 			h.Log.Errorf("事件不合法%#v\n", event)
@@ -95,6 +96,7 @@ func (h *Handler) OnRow(e *canal.RowsEvent) error {
 			h.buffer = append(h.buffer, event)
 		}
 	}
+	h.Log.Debug("全部放入事件buffer池")
 	return nil
 }
 
