@@ -19,4 +19,11 @@ type Consumer interface {
 	SetRuleNum(int)
 	GetRuleNum() int
 	IsClosed() bool
+	ConsumerInfo() (ConsumerInfo, error)
+}
+
+type ConsumerInfo struct {
+	Name   string `json:"name"`
+	Id     int    `json:"id"`
+	Closed bool   `json:"closed"`
 }

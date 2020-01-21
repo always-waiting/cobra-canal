@@ -283,3 +283,7 @@ func (this *Factory) PoolCap() int {
 func (this *Factory) PoolLen() int {
 	return len(this.eventsChan)
 }
+
+func (this *Factory) IsClosed() bool {
+	return this.closed
+}

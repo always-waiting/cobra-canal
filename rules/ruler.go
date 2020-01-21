@@ -27,8 +27,5 @@ type Ruler interface {
 	SetAggregator(config.Aggregatable)
 	Reset() error
 	IsClosed() bool
-	CsrNum() map[string]int
-	ActiveCsrNum() map[string]int
-	CsrPoolCap() map[string]int
-	CsrPoolLen() map[string]int
+	RulerInfo() (RulerInfo, error)
 }

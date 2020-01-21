@@ -1,7 +1,6 @@
 package rules
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/always-waiting/cobra-canal/config"
@@ -104,14 +103,6 @@ func InitRule(cfg config.RuleConfig) (rule Factory, err error) {
 	rule.aggregator = cfg.InitAggregator()
 	rule.name = cfg.Name
 	return
-}
-
-func (this *Factory) PoolCap() int {
-	return cap(this.eventChannel)
-}
-
-func (this *Factory) PoolLen() int {
-	return len(this.eventChannel)
 }
 
 func (this *Factory) SetName(name string) {
@@ -225,52 +216,6 @@ func (this *Factory) Start() {
 
 func (this *Factory) IsClosed() bool {
 	return this.closed
-}
-
-func (this *Factory) RulerNum() int {
-	return this.rulerNum
-}
-
-func (this *Factory) ActiveRulerNum() int {
-	var num int
-	for _, r := range this.ruler {
-		if !r.IsClosed() {
-			num = num + 1
-		}
-	}
-	return num
-}
-
-func (this *Factory) ReportConsumer() (ret []string, err error) {
-	ret = make([]string, 0)
-	mapTotal := make(map[string]int)
-	mapActive := make(map[string]int)
-	for _, r := range this.ruler {
-		t := r.CsrNum()
-		a := r.ActiveCsrNum()
-		for name, num := range t {
-			if val, ok := mapTotal[name]; ok {
-				mapTotal[name] = val + num
-			} else {
-				mapTotal[name] = num
-			}
-		}
-		for name, num := range a {
-			if val, ok := mapActive[name]; ok {
-				mapActive[name] = val + num
-			} else {
-				mapActive[name] = num
-			}
-		}
-	}
-	for name, num := range mapTotal {
-		if act, ok := mapActive[name]; ok {
-			ret = append(ret, fmt.Sprintf("%d/%d(%s)", act, num, name))
-		} else {
-			ret = append(ret, fmt.Sprintf("%d/%d(%s)", 0, num, name))
-		}
-	}
-	return
 }
 
 func (this *Factory) GetRulers() []Ruler {

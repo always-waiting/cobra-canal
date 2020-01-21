@@ -176,17 +176,6 @@ func (this *BasicRuler) AddTransferFunc(name string, f func([]event.Event) (inte
 	this.transferFunc[name] = f
 }
 
-/*
-func (this *BasicRuler) SetConsumerTransferFunc(name string, f func([]event.Event) (interface{}, error)) (err error) {
-	if _, ok := this.consumers[name]; !ok {
-		err = errors.Errorf("未初始化的消费器%s", name)
-		return
-	}
-	this.consumers[name].SetTransferFunc(f)
-	return err
-}
-*/
-
 func (this *BasicRuler) Start() {
 	this.StartConsume()
 	if this.IsAggre() {
@@ -363,52 +352,4 @@ func (this *BasicRuler) Reset() error {
 
 func (this *BasicRuler) IsClosed() bool {
 	return this.closed
-}
-
-func (this *BasicRuler) CsrNum() (ret map[string]int) {
-	ret = make(map[string]int)
-	for name, c := range this.consumers {
-		if num, ok := ret[name]; !ok {
-			ret[name] = c.ConsumerNum()
-		} else {
-			ret[name] = num + c.ConsumerNum()
-		}
-	}
-	return
-}
-
-func (this *BasicRuler) ActiveCsrNum() (ret map[string]int) {
-	ret = make(map[string]int)
-	for name, c := range this.consumers {
-		if num, ok := ret[name]; !ok {
-			ret[name] = c.ActiveConsumerNum()
-		} else {
-			ret[name] = num + c.ActiveConsumerNum()
-		}
-	}
-	return ret
-}
-
-func (this *BasicRuler) CsrPoolCap() (ret map[string]int) {
-	ret = make(map[string]int)
-	for name, c := range this.consumers {
-		if num, ok := ret[name]; !ok {
-			ret[name] = c.PoolCap()
-		} else {
-			ret[name] = num + c.PoolCap()
-		}
-	}
-	return
-}
-
-func (this *BasicRuler) CsrPoolLen() (ret map[string]int) {
-	ret = make(map[string]int)
-	for name, c := range this.consumers {
-		if num, ok := ret[name]; !ok {
-			ret[name] = c.PoolLen()
-		} else {
-			ret[name] = num + c.PoolLen()
-		}
-	}
-	return
 }

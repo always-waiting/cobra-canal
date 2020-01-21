@@ -1,11 +1,10 @@
 package cobra
 
 import (
-	"fmt"
+	"net/http"
+
 	"github.com/MakeNowJust/heredoc"
 	"github.com/always-waiting/cobra-canal/rules"
-	"net/http"
-	"strings"
 )
 
 const (
@@ -38,102 +37,44 @@ $$$$$消费器: %s$$$$$
 消费器个数: %s`)
 
 func (h *Handler) ServeHTTPReport(rsp http.ResponseWriter, req *http.Request) {
+	rsp.Header().Set("Content-Type", "application/json")
+	ret := stdReturn{}
 	err := req.ParseForm()
+	var infos []rules.FactoryInfo
+	var name string
 	if err != nil {
-		fmt.Println("解析出错")
-		return
+		ret.Code = 500
+		ret.Message = FAIL
+		ret.Err = err.Error()
+		goto RETURN
 	}
-	var ruleinfo []byte
-	name := req.Form.Get("rule")
-	if name == "all" {
-		ruleinfo, err = h.reportRuleAll()
-	} else {
-		ruleinfo, err = h.reportRule(name)
-	}
+	name = req.Form.Get("rule")
+	infos, err = h.reportRule(name)
 	if err != nil {
-		rsp.Write([]byte(err.Error()))
-	} else {
-		rsp.Write(ruleinfo)
+		ret.Code = 500
+		ret.Message = FAIL
+		ret.Err = err.Error()
+		goto RETURN
 	}
+	ret.Code = 200
+	ret.Message = SUCCESS
+	ret.Data = infos
+RETURN:
+	js, _ := ret.json(req)
+	rsp.Write(js)
+
 }
 
-func (h *Handler) reportRuleAll() (ret []byte, err error) {
-	var info string
-	lineSep := "\n"
-	head := []interface{}{"name", "aggreable", "closed", "ruler", "consumer"}
-	report := []string{fmt.Sprintf(REPORT_TEMPLATE, head...)}
+func (h *Handler) reportRule(name string) (ret []rules.FactoryInfo, err error) {
+	ret = make([]rules.FactoryInfo, 0)
 	for _, r := range h.Rules {
-		cols := make([]interface{}, 0)
-		cols = append(cols, r.GetName())
-		cols = append(cols, fmt.Sprintf("%v", r.IsAggre()))
-		cols = append(cols, fmt.Sprintf("%v", r.IsClosed()))
-		cols = append(cols, fmt.Sprintf("%d/%d", r.ActiveRulerNum(), r.RulerNum()))
-		csrInfo, err := r.ReportConsumer()
-		if err != nil {
-			return nil, err
-		}
-		cols = append(cols, strings.Join(csrInfo, ","))
-		report = append(report, fmt.Sprintf(REPORT_TEMPLATE, cols...))
-	}
-	info = strings.Join(report, lineSep)
-	ret = []byte(info)
-	return
-}
-
-func (h *Handler) reportRule(name string) (ret []byte, err error) {
-	var r *rules.Factory
-	for _, a := range h.Rules {
-		if a.GetName() == name {
-			r = a
-			break
+		if name == "all" || name == r.GetName() {
+			if info, err := r.Info(); err != nil {
+				return nil, err
+			} else {
+				ret = append(ret, info)
+			}
 		}
 	}
-	if r == nil {
-		ret = []byte(fmt.Sprintf("没有找到规则%s", name))
-		return
-	}
-	isClose := r.IsClosed()
-	isAggre := r.IsAggre()
-	rulePoolCap := r.PoolCap()
-	rulePoolLen := r.PoolLen()
-	var aggreTime string
-	var aggreNum int
-	if isAggre {
-		aggreNum = r.GetAggreKeyNum()
-		aggreTime = r.GetAggreDuration()
-	} else {
-		aggreTime = "0s"
-		aggreNum = 0
-	}
-	var ruleInfos []string
-	for _, r := range r.GetRulers() {
-		rNum := r.GetNumber()
-		csrMap := r.CsrNum()
-		activecsrMap := r.ActiveCsrNum()
-		csrPoolCapMap := r.CsrPoolCap()
-		csrPoolLenMap := r.CsrPoolLen()
-		csrInfo := make([]string, 0)
-		isClosed := r.IsClosed()
-		for name, total := range csrMap {
-			active := activecsrMap[name]
-			capNum := csrPoolCapMap[name]
-			lenNum := csrPoolLenMap[name]
-			info := fmt.Sprintf(REPORT_CONSUMER,
-				name, capNum, lenNum, fmt.Sprintf("%d/%d", active, total),
-			)
-			csrInfo = append(csrInfo, info)
-		}
-		ruleInfo := fmt.Sprintf(REPORT_RULER,
-			rNum, !isClosed, strings.Join(csrInfo, "\n"),
-		)
-		ruleInfos = append(ruleInfos, ruleInfo)
-	}
-	info := fmt.Sprintf(REPORT_TEMPLATE1,
-		name, !isClose, isAggre,
-		rulePoolCap, rulePoolLen,
-		aggreTime, aggreNum,
-		strings.Join(ruleInfos, "\n"),
-	)
-	ret = []byte(info)
 	return
 }
