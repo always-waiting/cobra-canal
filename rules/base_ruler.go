@@ -24,7 +24,7 @@ type BasicRuler struct {
 	desc             string
 	number           int
 	aggregator       config.Aggregatable
-	consumers        map[string]*consumes.Consume
+	consumers        map[string]*consumes.Factory
 	DBClient         *client.Conn
 	mysqlCfg         *config.MysqlConfig
 	dbLock           sync.Mutex
@@ -108,7 +108,7 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 		this.Log.Info("构建fake消费器......")
 		ruleCfg.ConsumerCfg = append(ruleCfg.ConsumerCfg, &config.ConsumerConfig{})
 	}
-	this.consumers = make(map[string]*consumes.Consume)
+	this.consumers = make(map[string]*consumes.Factory)
 	for _, consumerCfg := range ruleCfg.ConsumerCfg {
 		if consume, err := consumes.CreateConsume(consumerCfg); err != nil {
 			return err
@@ -278,7 +278,7 @@ func (this *BasicRuler) CloseConsume() {
 	var wg sync.WaitGroup
 	for _, consume := range this.consumers {
 		wg.Add(1)
-		go func(c *consumes.Consume) {
+		go func(c *consumes.Factory) {
 			c.Close()
 			wg.Done()
 		}(consume)
@@ -290,7 +290,7 @@ func (this *BasicRuler) Push(events []event.Event) {
 	var wg sync.WaitGroup
 	for _, consume := range this.consumers {
 		wg.Add(1)
-		go func(c *consumes.Consume) {
+		go func(c *consumes.Factory) {
 			this.Log.Debugf("Rule%d: %s规则向%s消费池推送事件包", this.number, this.name, c.GetName())
 			c.Push(events)
 			wg.Done()
