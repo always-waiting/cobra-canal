@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/always-waiting/cobra-canal/config"
 	"github.com/google/gops/agent"
 )
 
@@ -68,9 +69,14 @@ func (this stdReturn) json(req *http.Request) ([]byte, error) {
 }
 
 func (this *CobraHttp) reportPosition(rsp http.ResponseWriter, req *http.Request) {
+	cfg := config.Config()
 	pos := this.cobra.syncedPosition()
 	rsp.Header().Set("Content-Type", "application/json")
-	data := stdReturn{Code: 200, Message: SUCCESS, Data: pos}
+	data := stdReturn{Code: 200, Message: SUCCESS, Data: struct {
+		ServerID uint32 `json:"server_id"`
+		Name     string `json:"name"`
+		Pos      uint32 `json:"pos"`
+	}{cfg.CanalCfg.ServerID, pos.Name, pos.Pos}}
 	js, _ := data.json(req)
 	rsp.Write(js)
 }
