@@ -20,7 +20,7 @@ const (
 )
 
 type Handler struct {
-	Rules     []*rules.Rule
+	Rules     []*rules.Factory
 	errHr     *cobraErrors.ErrHandler
 	Log       *log.Logger
 	lock      sync.Mutex
@@ -31,14 +31,14 @@ type Handler struct {
 
 func CreateHandler(cfg []config.RuleConfig, buffer int) (h *Handler, err error) {
 	h = new(Handler)
-	h.Rules = make([]*rules.Rule, 0)
+	h.Rules = make([]*rules.Factory, 0)
 	h.buffer = make([]event.Event, 0, buffer)
 	h.bufferNum = buffer
 	if len(cfg) == 0 {
 		cfg = append(cfg, config.RuleConfig{})
 	}
 	for _, ruleCfg := range cfg {
-		var rule rules.Rule
+		var rule rules.Factory
 		if rule, err = rules.CreateRule(ruleCfg); err != nil {
 			return
 		}
@@ -64,7 +64,7 @@ func (h *Handler) Stop() {
 	var wg sync.WaitGroup
 	for _, rule := range h.Rules {
 		wg.Add(1)
-		go func(r *rules.Rule) {
+		go func(r *rules.Factory) {
 			r.Close()
 			wg.Done()
 		}(rule)

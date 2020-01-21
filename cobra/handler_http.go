@@ -81,7 +81,7 @@ func (h *Handler) reportRuleAll() (ret []byte, err error) {
 }
 
 func (h *Handler) reportRule(name string) (ret []byte, err error) {
-	var r *rules.Rule
+	var r *rules.Factory
 	for _, a := range h.Rules {
 		if a.GetName() == name {
 			r = a
