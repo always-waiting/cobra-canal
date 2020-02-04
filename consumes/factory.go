@@ -46,6 +46,8 @@ func CreateConsume(cfg *config.ConsumerConfig) (ret Factory, err error) {
 	if !ok {
 		err = errors.Errorf(LOAD_ERR1, cfg.Type)
 	}
+	ret.name = cfg.Type
+	ret.desc = cfg.Desc
 	for i := 0; i < ret.consumerNum; i++ {
 		if csr, err = f(cfg); err != nil {
 			return
@@ -75,6 +77,8 @@ type Factory struct {
 	Log             *log.Logger
 	consumerNum     int
 	rulerNum        int
+	name            string
+	desc            string
 }
 
 func MakeFakeConsume() Factory {

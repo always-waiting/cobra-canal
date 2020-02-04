@@ -28,6 +28,7 @@ type Factory struct {
 	rulerNum     int
 	aggregator   config.Aggregatable
 	name         string
+	desc         string
 }
 
 var ruleMakers = map[string]func(config.RuleConfig) (Ruler, error){
@@ -71,6 +72,7 @@ func CreateRule(cfg config.RuleConfig) (rule Factory, err error) {
 		err = errors.Errorf(LOAD_ERR2, cfg.Name)
 		return
 	}
+	rule.desc = cfg.Desc
 	for i := 0; i < rule.rulerNum; i++ {
 		var ruler Ruler
 		if ruler, err = f(cfg); err != nil {

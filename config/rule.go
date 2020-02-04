@@ -2,6 +2,7 @@ package config
 
 type RuleConfig struct {
 	Name           string             `toml:"name" description:"规则的名称"`
+	Desc           string             `toml:"desc" description:"规则的简介"`
 	BufferNum      int                `toml:"buffer_number" description:"事件缓存个数"`
 	ReplySync      []string           `toml:"reply_sync" description:"规则需要相应的同步类型"`
 	MasterDBCfg    *MysqlConfig       `toml:"masterdb" description:"上游监控数据库名，用于生成读取上游数据库的对象"`

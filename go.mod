@@ -20,6 +20,7 @@ require (
 	github.com/google/gops v0.3.6
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/gorilla/websocket v1.4.1 // indirect
+	github.com/graph-gophers/graphql-go v0.0.0-20191115155744-f33e81362277 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.12.1 // indirect

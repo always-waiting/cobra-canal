@@ -17,8 +17,8 @@ func (this *BasicRuler) ServeHTTPStop(rsp http.ResponseWriter, req *http.Respons
 }
 
 type RulerInfo struct {
-	Name     string                 `json:"name"`
-	Desc     string                 `json:"desc"`
+	Name     string                 `json:"-"`
+	Desc     string                 `json:"-"`
 	Id       int                    `json:"id"`
 	Closed   bool                   `json:"closed"`
 	Consumes []consumes.FactoryInfo `json:"consumes"`

@@ -23,7 +23,8 @@ type Consumer interface {
 }
 
 type ConsumerInfo struct {
-	Name   string `json:"name"`
-	Id     int    `json:"id"`
-	Closed bool   `json:"closed"`
+	Name      string      `json:"-"`
+	Id        int         `json:"id"`
+	Closed    bool        `json:"closed"`
+	ExtraInfo interface{} `json:"extra_info,omitempty"`
 }

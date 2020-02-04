@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"github.com/always-waiting/cobra-canal/config"
 	"net/http"
 )
 
@@ -22,19 +23,21 @@ func (this *Factory) ServeHTTPStart(rsp http.ResponseWriter, req *http.Request) 
 }
 
 type FactoryInfo struct {
-	Name      string      `json:"name"`
-	Aggreable bool        `json:"aggreable"`
-	Closed    bool        `json:"closed"`
-	EventNum  int         `json:"event_number"`
-	EventCap  int         `json:"event_capacity"`
-	Rulers    []RulerInfo `json:"rulers"`
+	Name      string           `json:"name"`
+	Desc      string           `json:"description"`
+	AggreInfo config.AggreInfo `json:"aggreinfo"`
+	Closed    bool             `json:"closed"`
+	EventNum  int              `json:"event_number"`
+	EventCap  int              `json:"event_capacity"`
+	Rulers    []RulerInfo      `json:"rulers"`
 	// 聚合信息暂时不考虑
 }
 
 func (this *Factory) Info() (info FactoryInfo, err error) {
 	info = FactoryInfo{}
 	info.Name = this.name
-	info.Aggreable = this.IsAggre()
+	info.Desc = this.desc
+	info.AggreInfo = this.AggreInfo()
 	info.Closed = this.IsClosed()
 	info.EventNum = len(this.eventChannel)
 	info.EventCap = cap(this.eventChannel)
@@ -47,5 +50,15 @@ func (this *Factory) Info() (info FactoryInfo, err error) {
 		}
 	}
 	info.Rulers = rInfos
+	return
+}
+
+func (this *Factory) AggreInfo() (info config.AggreInfo) {
+	if this.IsAggre() {
+		info = this.aggregator.GetAggreInfo()
+		info.Aggreable = true
+	} else {
+		info = config.AggreInfo{}
+	}
 	return
 }

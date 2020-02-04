@@ -14,7 +14,7 @@ const (
 type MysqlConfig struct {
 	Addr   string `toml:"addr"`
 	User   string `toml:"user"`
-	Passwd string `toml:"password"`
+	Passwd string `toml:"password" json:"-"`
 	Db     string `toml:"db"`
 }
 

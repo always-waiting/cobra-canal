@@ -8,6 +8,12 @@ import (
 	"github.com/siddontang/go-log/log"
 )
 
+type AggreInfo struct {
+	Aggreable bool   `json:"aggreable"`
+	Interval  string `json:"interval"`
+	Number    int    `json:"number" description:"存储在聚合器中键的个数"`
+}
+
 type Aggregatable interface {
 	GetRule(string) *IdxRuleConfig
 	GetIdxValue(event.Event) (string, error)
@@ -19,6 +25,7 @@ type Aggregatable interface {
 	DiffData(*IdxRuleConfig, map[string]interface{}, map[string]interface{}) (map[string]interface{}, error)
 	Stop()
 	Reset()
+	GetAggreInfo() AggreInfo
 	GetKeyNum() int
 	GetTimeDuration() string
 }
@@ -35,6 +42,10 @@ type Aggregator struct {
 	cfgMap        map[string]IdxRuleConfig
 	CIdxGenerator func(event.Event) (string, error)
 	Collector     *Collector
+}
+
+func (b *Aggregator) GetAggreInfo() AggreInfo {
+	return AggreInfo{Interval: b.GetTimeDuration(), Number: b.GetKeyNum()}
 }
 
 func (b *Aggregator) GetKeyNum() int {
