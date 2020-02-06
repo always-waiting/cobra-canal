@@ -1,11 +1,11 @@
 package cobra
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/always-waiting/cobra-canal/config"
+	"github.com/always-waiting/cobra-canal/helps"
 	"github.com/google/gops/agent"
 )
 
@@ -14,11 +14,6 @@ type CobraHttp struct {
 	Mux   *http.ServeMux
 	cobra *Cobra
 }
-
-const (
-	SUCCESS = "success"
-	FAIL    = "fail"
-)
 
 func CreateCobraHttp(port int) (*CobraHttp, error) {
 	r := &CobraHttp{}
@@ -52,53 +47,45 @@ func (this *CobraHttp) AddRulePath(h *Handler) (err error) {
 	return nil
 }
 
-type stdReturn struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Err     interface{} `json:"err,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
-}
-
-func (this stdReturn) json(req *http.Request) ([]byte, error) {
-	q := req.URL.Query()
-	_, flag := q["pretty"]
-	if flag {
-		return json.MarshalIndent(this, "", "\t")
-	}
-	return json.Marshal(this)
-}
-
 func (this *CobraHttp) reportPosition(rsp http.ResponseWriter, req *http.Request) {
 	cfg := config.Config()
 	pos := this.cobra.syncedPosition()
 	rsp.Header().Set("Content-Type", "application/json")
-	data := stdReturn{Code: 200, Message: SUCCESS, Data: struct {
+	data := helps.StdReturn{Code: 200, Message: helps.HTTPSUCCESS, Data: struct {
 		ServerID uint32 `json:"server_id"`
 		Name     string `json:"name"`
 		Pos      uint32 `json:"pos"`
 	}{cfg.CanalCfg.ServerID, pos.Name, pos.Pos}}
-	js, _ := data.json(req)
+	js, _ := data.Json(req)
 	rsp.Write(js)
 }
 
 func (this *CobraHttp) savePosition(rsp http.ResponseWriter, req *http.Request) {
 	err := this.cobra.SavePosition()
-	var data stdReturn
+	var data helps.StdReturn
 	if err != nil {
-		data = stdReturn{Code: 500, Message: FAIL, Err: err}
+		data = helps.StdReturn{Code: 500, Message: helps.HTTPFAIL, Err: err}
 	} else {
-		data = stdReturn{Code: 200, Message: SUCCESS}
+		data = helps.StdReturn{Code: 200, Message: helps.HTTPSUCCESS}
 	}
-	js, _ := data.json(req)
+	js, _ := data.Json(req)
 	rsp.Write(js)
 }
 
 func debugStart(rsp http.ResponseWriter, req *http.Request) {
 	agent.Listen(agent.Options{})
+	rsp.Header().Set("Content-Type", "application/json")
+	data := helps.StdReturn{Code: 200, Message: helps.HTTPSUCCESS}
+	js, _ := data.Json(req)
+	rsp.Write(js)
 }
 
 func debugStop(rsp http.ResponseWriter, req *http.Request) {
 	agent.Close()
+	rsp.Header().Set("Content-Type", "application/json")
+	data := helps.StdReturn{Code: 200, Message: helps.HTTPSUCCESS}
+	js, _ := data.Json(req)
+	rsp.Write(js)
 }
 
 func (this *CobraHttp) Run() error {

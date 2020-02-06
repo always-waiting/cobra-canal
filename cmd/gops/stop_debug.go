@@ -21,7 +21,13 @@ func stopDebugCmdRun(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	host, _ := cmd.Flags().GetString("host")
-	Addr := fmt.Sprintf("http://%s:%s/gops/debug/stop", host, port)
+	pretty, _ := cmd.Flags().GetBool("pretty")
+	var Addr string
+	if pretty {
+		Addr = fmt.Sprintf("http://%s:%s/gops/debug/stop?pretty", host, port)
+	} else {
+		Addr = fmt.Sprintf("http://%s:%s/gops/debug/stop", host, port)
+	}
 	req, _ := http.NewRequest("GET", Addr, nil)
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -29,5 +35,5 @@ func stopDebugCmdRun(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	defer resp.Body.Close()
-	fmt.Printf(SUCCESS1, "stopDebug")
+	helps.CmdPrint(resp)
 }
