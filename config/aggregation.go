@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/always-waiting/cobra-canal/event"
+	"reflect"
 
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
@@ -176,9 +177,14 @@ func (this *Aggregator) DiffData(idxR *IdxRuleConfig, dataA map[string]interface
 	ret = make(map[string]interface{})
 	for key, valA := range dataA {
 		if valB, ok := dataB[key]; ok {
-			if valA != valB {
+			if !reflect.DeepEqual(valA, valB) {
 				ret[key] = valA
 			}
+			/*
+				if valA != valB {
+					ret[key] = valA
+				}
+			*/
 		} else {
 			ret[key] = valA
 		}
