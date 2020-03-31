@@ -31,7 +31,7 @@ type BasicRuler struct {
 	filter           FilterHandler
 	isReady          bool
 	closed           bool
-	closeAggregation chan bool
+	closeAggregation chan struct{}
 	Log              *log.Logger
 	transferFunc     map[string]func([]event.Event) (interface{}, error)
 	hasLoadConfig    bool
@@ -97,7 +97,7 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 	}
 	this.hasLoadConfig = true
 	this.aggregator = ruleCfg.InitAggregator()
-	this.closeAggregation = make(chan bool, 1)
+	this.closeAggregation = make(chan struct{}, 1)
 	if len(ruleCfg.ReplySync) != 0 {
 		this.filter.LoadReplySyncFilter(ruleCfg.ReplySync)
 	}
@@ -313,7 +313,7 @@ func (this *BasicRuler) StartAggregation() {
 		this.Log.Debugf("Rule%d: 聚合消费%s键的事件包", this.number, key)
 		this.Push(events)
 	}
-	this.closeAggregation <- true
+	this.closeAggregation <- struct{}{}
 }
 
 func (this *BasicRuler) CloseAggregation() error {

@@ -70,7 +70,7 @@ type Consume struct {
 	eventsChan      chan []event.Event
 	closed          bool
 	isReady         bool
-	isConsumerClose chan bool
+	isConsumerClose chan struct{}
 	errHr           *cobraErrors.ErrHandler
 	Log             *log.Logger
 	consumerNum     int
@@ -92,7 +92,7 @@ func InitConsume(cfg *config.ConsumerConfig) (Consume, error) {
 	var err error
 	consume := Consume{}
 	consume.eventsChan = make(chan []event.Event, cfg.GetBufferNum())
-	consume.isConsumerClose = make(chan bool, 1)
+	consume.isConsumerClose = make(chan struct{}, 1)
 	consume.errHr = cobraErrors.MakeErrHandler(cfg.ErrSenderCfg.Parse(), cfg.GetBufferNum())
 	consume.Log, err = cfg.LogCfg.GetLogger()
 	consume.consumerNum = cfg.Worker()
@@ -211,7 +211,7 @@ func (this *Consume) Start() {
 	}
 	wg.Wait()
 	this.Log.Infof("Rule%d: %s消费池关闭", this.GetRuleNum(), this.GetName())
-	this.isConsumerClose <- true
+	this.isConsumerClose <- struct{}{}
 }
 
 func (this *Consume) modifyErr(err error, input []event.Event) (retErr error) {
