@@ -21,7 +21,7 @@ type Factory struct {
 	ruler        []Ruler                 `description:"规则,数组是指统一规则的多个worker"`
 	eventChannel chan event.Event        `description:"事件队列"`
 	errHr        *cobraErrors.ErrHandler `description:"错误处理对象"`
-	isRulerClose chan bool
+	isRulerClose chan struct{}
 	closed       bool
 	isReady      bool
 	Log          *log.Logger
@@ -99,7 +99,7 @@ func InitRule(cfg config.RuleConfig) (rule Factory, err error) {
 	rule = Factory{}
 	rule.eventChannel = make(chan event.Event, cfg.GetBufferNum())
 	rule.errHr = cobraErrors.MakeErrHandler(cfg.ErrSenderCfg.Parse(), cfg.GetBufferNum())
-	rule.isRulerClose = make(chan bool, 1)
+	rule.isRulerClose = make(chan struct{}, 1)
 	rule.Log, err = cfg.LogCfg.GetLogger()
 	rule.rulerNum = cfg.Worker()
 	rule.aggregator = cfg.InitAggregator()
@@ -213,7 +213,7 @@ func (this *Factory) Start() {
 		this.aggregator.Stop()
 		this.Log.Infof("%s规则关闭聚合器", this.name)
 	}
-	this.isRulerClose <- true
+	this.isRulerClose <- struct{}{}
 }
 
 func (this *Factory) IsClosed() bool {
