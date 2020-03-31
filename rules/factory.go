@@ -1,7 +1,6 @@
 package rules
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/always-waiting/cobra-canal/config"
@@ -18,7 +17,7 @@ const (
 	HEADER    = ">>>>>>>>开始处理<<<<<<<<"
 )
 
-type Rule struct {
+type Factory struct {
 	ruler        []Ruler                 `description:"规则,数组是指统一规则的多个worker"`
 	eventChannel chan event.Event        `description:"事件队列"`
 	errHr        *cobraErrors.ErrHandler `description:"错误处理对象"`
@@ -29,6 +28,7 @@ type Rule struct {
 	rulerNum     int
 	aggregator   config.Aggregatable
 	name         string
+	desc         string
 }
 
 var ruleMakers = map[string]func(config.RuleConfig) (Ruler, error){
@@ -59,7 +59,7 @@ func RegisterRuleMaker(name string, f func(config.RuleConfig) (Ruler, error)) {
 	ruleMakers[name] = f
 }
 
-func CreateRule(cfg config.RuleConfig) (rule Rule, err error) {
+func CreateRule(cfg config.RuleConfig) (rule Factory, err error) {
 	if rule, err = InitRule(cfg); err != nil {
 		return
 	}
@@ -72,6 +72,7 @@ func CreateRule(cfg config.RuleConfig) (rule Rule, err error) {
 		err = errors.Errorf(LOAD_ERR2, cfg.Name)
 		return
 	}
+	rule.desc = cfg.Desc
 	for i := 0; i < rule.rulerNum; i++ {
 		var ruler Ruler
 		if ruler, err = f(cfg); err != nil {
@@ -94,8 +95,8 @@ func CreateRule(cfg config.RuleConfig) (rule Rule, err error) {
 	return
 }
 
-func InitRule(cfg config.RuleConfig) (rule Rule, err error) {
-	rule = Rule{}
+func InitRule(cfg config.RuleConfig) (rule Factory, err error) {
+	rule = Factory{}
 	rule.eventChannel = make(chan event.Event, cfg.GetBufferNum())
 	rule.errHr = cobraErrors.MakeErrHandler(cfg.ErrSenderCfg.Parse(), cfg.GetBufferNum())
 	rule.isRulerClose = make(chan struct{}, 1)
@@ -106,34 +107,26 @@ func InitRule(cfg config.RuleConfig) (rule Rule, err error) {
 	return
 }
 
-func (this *Rule) PoolCap() int {
-	return cap(this.eventChannel)
-}
-
-func (this *Rule) PoolLen() int {
-	return len(this.eventChannel)
-}
-
-func (this *Rule) SetName(name string) {
+func (this *Factory) SetName(name string) {
 	this.name = name
 }
 
-func (this *Rule) GetName() string {
+func (this *Factory) GetName() string {
 	return this.name
 }
 
-func (this *Rule) IsAggre() bool {
+func (this *Factory) IsAggre() bool {
 	return this.aggregator != nil
 }
 
-func (this *Rule) SetRuler(r Ruler) {
+func (this *Factory) SetRuler(r Ruler) {
 	if this.ruler == nil {
 		this.ruler = make([]Ruler, 0)
 	}
 	this.ruler = append(this.ruler, r)
 }
 
-func (this *Rule) Push(e event.Event) {
+func (this *Factory) Push(e event.Event) {
 	if this.closed {
 		this.Log.Errorf("%s规则事件池已经关闭，不能放入事件", this.name)
 		return
@@ -141,7 +134,7 @@ func (this *Rule) Push(e event.Event) {
 	this.eventChannel <- e
 }
 
-func (this *Rule) Close() error {
+func (this *Factory) Close() error {
 	if this.closed {
 		return nil
 	}
@@ -164,7 +157,7 @@ func (this *Rule) Close() error {
 	return err
 }
 
-func (this *Rule) Reset() error {
+func (this *Factory) Reset() error {
 	var err error
 	this.eventChannel = make(chan event.Event, cap(this.eventChannel))
 	if this.errHr != nil {
@@ -186,7 +179,7 @@ func (this *Rule) Reset() error {
 	return nil
 }
 
-func (this *Rule) Start() {
+func (this *Factory) Start() {
 	if this.isReady {
 		return
 	}
@@ -223,68 +216,22 @@ func (this *Rule) Start() {
 	this.isRulerClose <- struct{}{}
 }
 
-func (this *Rule) IsClosed() bool {
+func (this *Factory) IsClosed() bool {
 	return this.closed
 }
 
-func (this *Rule) RulerNum() int {
-	return this.rulerNum
-}
-
-func (this *Rule) ActiveRulerNum() int {
-	var num int
-	for _, r := range this.ruler {
-		if !r.IsClosed() {
-			num = num + 1
-		}
-	}
-	return num
-}
-
-func (this *Rule) ReportConsumer() (ret []string, err error) {
-	ret = make([]string, 0)
-	mapTotal := make(map[string]int)
-	mapActive := make(map[string]int)
-	for _, r := range this.ruler {
-		t := r.CsrNum()
-		a := r.ActiveCsrNum()
-		for name, num := range t {
-			if val, ok := mapTotal[name]; ok {
-				mapTotal[name] = val + num
-			} else {
-				mapTotal[name] = num
-			}
-		}
-		for name, num := range a {
-			if val, ok := mapActive[name]; ok {
-				mapActive[name] = val + num
-			} else {
-				mapActive[name] = num
-			}
-		}
-	}
-	for name, num := range mapTotal {
-		if act, ok := mapActive[name]; ok {
-			ret = append(ret, fmt.Sprintf("%d/%d(%s)", act, num, name))
-		} else {
-			ret = append(ret, fmt.Sprintf("%d/%d(%s)", 0, num, name))
-		}
-	}
-	return
-}
-
-func (this *Rule) GetRulers() []Ruler {
+func (this *Factory) GetRulers() []Ruler {
 	return this.ruler
 }
 
-func (this *Rule) GetAggreKeyNum() int {
+func (this *Factory) GetAggreKeyNum() int {
 	if this.aggregator != nil {
 		return this.aggregator.GetKeyNum()
 	}
 	return 0
 }
 
-func (this *Rule) GetAggreDuration() string {
+func (this *Factory) GetAggreDuration() string {
 	if this.aggregator != nil {
 		return this.aggregator.GetTimeDuration()
 	}

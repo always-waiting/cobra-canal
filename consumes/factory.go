@@ -1,4 +1,4 @@
-package consumer
+package consumes
 
 import (
 	"fmt"
@@ -34,7 +34,7 @@ func RegisterConsumerMaker(name string, f func(*config.ConsumerConfig) (Consumer
 	consumerMakers[name] = f
 }
 
-func CreateConsume(cfg *config.ConsumerConfig) (ret Consume, err error) {
+func CreateConsume(cfg *config.ConsumerConfig) (ret Factory, err error) {
 	if ret, err = InitConsume(cfg); err != nil {
 		return
 	}
@@ -46,6 +46,8 @@ func CreateConsume(cfg *config.ConsumerConfig) (ret Consume, err error) {
 	if !ok {
 		err = errors.Errorf(LOAD_ERR1, cfg.Type)
 	}
+	ret.name = cfg.Type
+	ret.desc = cfg.Desc
 	for i := 0; i < ret.consumerNum; i++ {
 		if csr, err = f(cfg); err != nil {
 			return
@@ -65,7 +67,7 @@ func CreateConsume(cfg *config.ConsumerConfig) (ret Consume, err error) {
 	return
 }
 
-type Consume struct {
+type Factory struct {
 	consumer        []Consumer
 	eventsChan      chan []event.Event
 	closed          bool
@@ -75,9 +77,11 @@ type Consume struct {
 	Log             *log.Logger
 	consumerNum     int
 	rulerNum        int
+	name            string
+	desc            string
 }
 
-func MakeFakeConsume() Consume {
+func MakeFakeConsume() Factory {
 	cfg := config.ConsumerConfig{}
 	c, _ := InitConsume(&cfg)
 	cr := new(BaseConsumer)
@@ -88,9 +92,9 @@ func MakeFakeConsume() Consume {
 	return c
 }
 
-func InitConsume(cfg *config.ConsumerConfig) (Consume, error) {
+func InitConsume(cfg *config.ConsumerConfig) (Factory, error) {
 	var err error
-	consume := Consume{}
+	consume := Factory{}
 	consume.eventsChan = make(chan []event.Event, cfg.GetBufferNum())
 	consume.isConsumerClose = make(chan struct{}, 1)
 	consume.errHr = cobraErrors.MakeErrHandler(cfg.ErrSenderCfg.Parse(), cfg.GetBufferNum())
@@ -100,7 +104,7 @@ func InitConsume(cfg *config.ConsumerConfig) (Consume, error) {
 	return consume, err
 }
 
-func (this *Consume) SetRulerNum(i int) {
+func (this *Factory) SetRulerNum(i int) {
 	this.rulerNum = i
 	if this.consumer != nil {
 		for _, csr := range this.consumer {
@@ -109,28 +113,28 @@ func (this *Consume) SetRulerNum(i int) {
 	}
 }
 
-func (this *Consume) GetRuleNum() int {
+func (this *Factory) GetRuleNum() int {
 	return this.rulerNum
 }
 
-func (this *Consume) SetTransferFunc(f func([]event.Event) (interface{}, error)) {
+func (this *Factory) SetTransferFunc(f func([]event.Event) (interface{}, error)) {
 	for _, csr := range this.consumer {
 		csr.SetTransferFunc(f)
 	}
 }
 
-func (this *Consume) SetConsumer(consumer Consumer) {
+func (this *Factory) SetConsumer(consumer Consumer) {
 	this.consumer = append(this.consumer, consumer)
 }
 
-func (this *Consume) GetName() string {
+func (this *Factory) GetName() string {
 	if len(this.consumer) != 0 {
 		return this.consumer[0].GetName()
 	}
 	return ""
 }
 
-func (this *Consume) Push(input []event.Event) {
+func (this *Factory) Push(input []event.Event) {
 	if this.closed {
 		this.Log.Errorf("Rule%d: %s消费池已经关闭，无法放入事件包", this.GetRuleNum(), this.GetName())
 		return
@@ -138,7 +142,7 @@ func (this *Consume) Push(input []event.Event) {
 	this.eventsChan <- input
 }
 
-func (this *Consume) Close() error {
+func (this *Factory) Close() error {
 	if this.closed {
 		return nil
 	}
@@ -170,7 +174,7 @@ func (this *Consume) Close() error {
 	return err
 }
 
-func (this *Consume) Start() {
+func (this *Factory) Start() {
 	this.Log.Infof("Rule%d: %s消费池开启...", this.GetRuleNum(), this.GetName())
 	if this.isReady {
 		return
@@ -214,7 +218,7 @@ func (this *Consume) Start() {
 	this.isConsumerClose <- struct{}{}
 }
 
-func (this *Consume) modifyErr(err error, input []event.Event) (retErr error) {
+func (this *Factory) modifyErr(err error, input []event.Event) (retErr error) {
 	if err == nil {
 		return
 	}
@@ -232,7 +236,7 @@ func (this *Consume) modifyErr(err error, input []event.Event) (retErr error) {
 	return
 }
 
-func (this *Consume) Reset() error {
+func (this *Factory) Reset() error {
 	var err error
 	this.eventsChan = make(chan []event.Event, cap(this.eventsChan))
 	if this.errHr != nil {
@@ -262,11 +266,11 @@ func (this *Consume) Reset() error {
 	return nil
 }
 
-func (this *Consume) ConsumerNum() int {
+func (this *Factory) ConsumerNum() int {
 	return this.consumerNum
 }
 
-func (this *Consume) ActiveConsumerNum() int {
+func (this *Factory) ActiveConsumerNum() int {
 	var num int
 	for _, csr := range this.consumer {
 		if !csr.IsClosed() {
@@ -276,10 +280,14 @@ func (this *Consume) ActiveConsumerNum() int {
 	return num
 }
 
-func (this *Consume) PoolCap() int {
+func (this *Factory) PoolCap() int {
 	return cap(this.eventsChan)
 }
 
-func (this *Consume) PoolLen() int {
+func (this *Factory) PoolLen() int {
 	return len(this.eventsChan)
+}
+
+func (this *Factory) IsClosed() bool {
+	return this.closed
 }

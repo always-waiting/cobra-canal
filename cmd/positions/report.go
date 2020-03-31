@@ -1,4 +1,4 @@
-package rule
+package positions
 
 import (
 	"fmt"
@@ -11,13 +11,9 @@ import (
 
 var reportCmd = &cobra.Command{
 	Use:     "report",
-	Short:   "提供规则信息",
+	Short:   "报告同步程序处理到的mysql binlog位置",
 	Version: "1.0.0",
 	Run:     reportCmdRun,
-}
-
-func init() {
-	reportCmd.Flags().String("rule", "all", "规则名称")
 }
 
 func reportCmdRun(cmd *cobra.Command, args []string) {
@@ -25,14 +21,13 @@ func reportCmdRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
-	rulename, _ := cmd.Flags().GetString("rule")
 	host, _ := cmd.Flags().GetString("host")
 	pretty, _ := cmd.Flags().GetBool("pretty")
 	var Addr string
 	if pretty {
-		Addr = fmt.Sprintf("http://%s:%s/rules/report?pretty&rule=%s", host, port, rulename)
+		Addr = fmt.Sprintf("http://%s:%s/cobra/position?pretty", host, port)
 	} else {
-		Addr = fmt.Sprintf("http://%s:%s/rules/report?rule=%s", host, port, rulename)
+		Addr = fmt.Sprintf("http://%s:%s/cobra/position", host, port)
 	}
 	req, _ := http.NewRequest("GET", Addr, nil)
 	client := &http.Client{}

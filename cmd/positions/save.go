@@ -1,4 +1,4 @@
-package rule
+package positions
 
 import (
 	"fmt"
@@ -9,30 +9,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var reportCmd = &cobra.Command{
-	Use:     "report",
-	Short:   "提供规则信息",
+var saveCmd = &cobra.Command{
+	Use:     "save",
+	Short:   "把同步位置存储到数据库",
 	Version: "1.0.0",
-	Run:     reportCmdRun,
+	Run:     saveCmdRun,
 }
 
-func init() {
-	reportCmd.Flags().String("rule", "all", "规则名称")
-}
-
-func reportCmdRun(cmd *cobra.Command, args []string) {
+func saveCmdRun(cmd *cobra.Command, args []string) {
 	port, err := helps.GetPort(cmd)
 	if err != nil {
 		panic(err)
 	}
-	rulename, _ := cmd.Flags().GetString("rule")
 	host, _ := cmd.Flags().GetString("host")
 	pretty, _ := cmd.Flags().GetBool("pretty")
 	var Addr string
 	if pretty {
-		Addr = fmt.Sprintf("http://%s:%s/rules/report?pretty&rule=%s", host, port, rulename)
+		Addr = fmt.Sprintf("http://%s:%s/cobra/position/save?pretty", host, port)
 	} else {
-		Addr = fmt.Sprintf("http://%s:%s/rules/report?rule=%s", host, port, rulename)
+		Addr = fmt.Sprintf("http://%s:%s/cobra/position/save", host, port)
 	}
 	req, _ := http.NewRequest("GET", Addr, nil)
 	client := &http.Client{}

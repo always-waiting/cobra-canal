@@ -12,7 +12,7 @@ import (
 
 	"github.com/always-waiting/cobra-canal/cmd"
 	"github.com/always-waiting/cobra-canal/config"
-	"github.com/always-waiting/cobra-canal/consumer"
+	"github.com/always-waiting/cobra-canal/consumes"
 	"github.com/always-waiting/cobra-canal/event"
 	"github.com/always-waiting/cobra-canal/rules"
 )
@@ -49,7 +49,7 @@ func rule1(e *event.Event) (bool, error) {
 }
 
 type printConsumer struct {
-	consumer.BaseConsumer
+	consumes.BaseConsumer
 	file   string
 	fileIo *os.File
 }
@@ -73,7 +73,7 @@ func (c *printConsumer) solve(i interface{}) (err error) {
 	return
 }
 
-func makeconsumer(cfg *config.ConsumerConfig) (ret consumer.Consumer, err error) {
+func makeconsumer(cfg *config.ConsumerConfig) (ret consumes.Consumer, err error) {
 	c := new(printConsumer)
 	c.file = cfg.App
 	c.SetName(cfg.Type)
@@ -84,6 +84,6 @@ func makeconsumer(cfg *config.ConsumerConfig) (ret consumer.Consumer, err error)
 
 func main() {
 	rules.RegisterRuleMaker("test", makeRule)
-	consumer.RegisterConsumerMaker("print", makeconsumer)
+	consumes.RegisterConsumerMaker("print", makeconsumer)
 	cmd.Execute()
 }

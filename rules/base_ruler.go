@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/always-waiting/cobra-canal/config"
-	"github.com/always-waiting/cobra-canal/consumer"
+	"github.com/always-waiting/cobra-canal/consumes"
 	"github.com/always-waiting/cobra-canal/event"
 
 	"github.com/juju/errors"
@@ -24,7 +24,7 @@ type BasicRuler struct {
 	desc             string
 	number           int
 	aggregator       config.Aggregatable
-	consumers        map[string]*consumer.Consume
+	consumers        map[string]*consumes.Factory
 	DBClient         *client.Conn
 	mysqlCfg         *config.MysqlConfig
 	dbLock           sync.Mutex
@@ -108,9 +108,9 @@ func (this *BasicRuler) LoadConfig(ruleCfg config.RuleConfig) (err error) {
 		this.Log.Info("构建fake消费器......")
 		ruleCfg.ConsumerCfg = append(ruleCfg.ConsumerCfg, &config.ConsumerConfig{})
 	}
-	this.consumers = make(map[string]*consumer.Consume)
+	this.consumers = make(map[string]*consumes.Factory)
 	for _, consumerCfg := range ruleCfg.ConsumerCfg {
-		if consume, err := consumer.CreateConsume(consumerCfg); err != nil {
+		if consume, err := consumes.CreateConsume(consumerCfg); err != nil {
 			return err
 		} else {
 			if f, ok := this.transferFunc[consume.GetName()]; ok {
@@ -175,17 +175,6 @@ func (this *BasicRuler) AddTransferFunc(name string, f func([]event.Event) (inte
 	}
 	this.transferFunc[name] = f
 }
-
-/*
-func (this *BasicRuler) SetConsumerTransferFunc(name string, f func([]event.Event) (interface{}, error)) (err error) {
-	if _, ok := this.consumers[name]; !ok {
-		err = errors.Errorf("未初始化的消费器%s", name)
-		return
-	}
-	this.consumers[name].SetTransferFunc(f)
-	return err
-}
-*/
 
 func (this *BasicRuler) Start() {
 	this.StartConsume()
@@ -278,7 +267,7 @@ func (this *BasicRuler) CloseConsume() {
 	var wg sync.WaitGroup
 	for _, consume := range this.consumers {
 		wg.Add(1)
-		go func(c *consumer.Consume) {
+		go func(c *consumes.Factory) {
 			c.Close()
 			wg.Done()
 		}(consume)
@@ -290,7 +279,7 @@ func (this *BasicRuler) Push(events []event.Event) {
 	var wg sync.WaitGroup
 	for _, consume := range this.consumers {
 		wg.Add(1)
-		go func(c *consumer.Consume) {
+		go func(c *consumes.Factory) {
 			this.Log.Debugf("Rule%d: %s规则向%s消费池推送事件包", this.number, this.name, c.GetName())
 			c.Push(events)
 			wg.Done()
@@ -363,52 +352,4 @@ func (this *BasicRuler) Reset() error {
 
 func (this *BasicRuler) IsClosed() bool {
 	return this.closed
-}
-
-func (this *BasicRuler) CsrNum() (ret map[string]int) {
-	ret = make(map[string]int)
-	for name, c := range this.consumers {
-		if num, ok := ret[name]; !ok {
-			ret[name] = c.ConsumerNum()
-		} else {
-			ret[name] = num + c.ConsumerNum()
-		}
-	}
-	return
-}
-
-func (this *BasicRuler) ActiveCsrNum() (ret map[string]int) {
-	ret = make(map[string]int)
-	for name, c := range this.consumers {
-		if num, ok := ret[name]; !ok {
-			ret[name] = c.ActiveConsumerNum()
-		} else {
-			ret[name] = num + c.ActiveConsumerNum()
-		}
-	}
-	return ret
-}
-
-func (this *BasicRuler) CsrPoolCap() (ret map[string]int) {
-	ret = make(map[string]int)
-	for name, c := range this.consumers {
-		if num, ok := ret[name]; !ok {
-			ret[name] = c.PoolCap()
-		} else {
-			ret[name] = num + c.PoolCap()
-		}
-	}
-	return
-}
-
-func (this *BasicRuler) CsrPoolLen() (ret map[string]int) {
-	ret = make(map[string]int)
-	for name, c := range this.consumers {
-		if num, ok := ret[name]; !ok {
-			ret[name] = c.PoolLen()
-		} else {
-			ret[name] = num + c.PoolLen()
-		}
-	}
-	return
 }

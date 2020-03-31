@@ -3,10 +3,17 @@ package config
 import (
 	"fmt"
 	"github.com/always-waiting/cobra-canal/event"
+	"reflect"
 
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
 )
+
+type AggreInfo struct {
+	Aggreable bool   `json:"aggreable"`
+	Interval  string `json:"interval"`
+	Number    int    `json:"number" description:"存储在聚合器中键的个数"`
+}
 
 type Aggregatable interface {
 	GetRule(string) *IdxRuleConfig
@@ -19,6 +26,7 @@ type Aggregatable interface {
 	DiffData(*IdxRuleConfig, map[string]interface{}, map[string]interface{}) (map[string]interface{}, error)
 	Stop()
 	Reset()
+	GetAggreInfo() AggreInfo
 	GetKeyNum() int
 	GetTimeDuration() string
 }
@@ -35,6 +43,10 @@ type Aggregator struct {
 	cfgMap        map[string]IdxRuleConfig
 	CIdxGenerator func(event.Event) (string, error)
 	Collector     *Collector
+}
+
+func (b *Aggregator) GetAggreInfo() AggreInfo {
+	return AggreInfo{Interval: b.GetTimeDuration(), Number: b.GetKeyNum()}
 }
 
 func (b *Aggregator) GetKeyNum() int {
@@ -165,9 +177,14 @@ func (this *Aggregator) DiffData(idxR *IdxRuleConfig, dataA map[string]interface
 	ret = make(map[string]interface{})
 	for key, valA := range dataA {
 		if valB, ok := dataB[key]; ok {
-			if valA != valB {
+			if !reflect.DeepEqual(valA, valB) {
 				ret[key] = valA
 			}
+			/*
+				if valA != valB {
+					ret[key] = valA
+				}
+			*/
 		} else {
 			ret[key] = valA
 		}

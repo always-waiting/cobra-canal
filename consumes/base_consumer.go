@@ -1,10 +1,11 @@
-package consumer
+package consumes
 
 import (
 	"fmt"
 	"github.com/always-waiting/cobra-canal/event"
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
+	"runtime"
 )
 
 const (
@@ -95,7 +96,9 @@ func (b *BaseConsumer) Reset() error {
 func (b *BaseConsumer) Transfer(events []event.Event) (data interface{}, err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = errors.Errorf("消费器Transfer未知错误:%v", e)
+			var buf [4096]byte
+			n := runtime.Stack(buf[:], false)
+			err = errors.Errorf("消费器Transfer未知错误:%v\n%s", e, string(buf[:n]))
 		}
 	}()
 	if b.transferFunc != nil {

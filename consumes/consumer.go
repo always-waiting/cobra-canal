@@ -1,4 +1,4 @@
-package consumer
+package consumes
 
 import (
 	"github.com/always-waiting/cobra-canal/event"
@@ -19,4 +19,12 @@ type Consumer interface {
 	SetRuleNum(int)
 	GetRuleNum() int
 	IsClosed() bool
+	ConsumerInfo() (ConsumerInfo, error)
+}
+
+type ConsumerInfo struct {
+	Name      string      `json:"-"`
+	Id        int         `json:"id"`
+	Closed    bool        `json:"closed"`
+	ExtraInfo interface{} `json:"extra_info,omitempty"`
 }

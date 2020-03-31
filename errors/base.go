@@ -42,6 +42,9 @@ func (this *ErrHandler) Reset() {
 }
 
 func (this *ErrHandler) Push(input interface{}) {
+	defer func() {
+		_ = recover()
+	}()
 	if this.closed {
 		return
 	}
