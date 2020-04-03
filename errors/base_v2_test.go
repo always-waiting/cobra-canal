@@ -4,6 +4,7 @@ import (
 	baseErr "errors"
 	"fmt"
 	"testing"
+	"time"
 )
 
 type testSender struct {
@@ -15,7 +16,7 @@ func (this *testSender) Send(doc string) (string, error) {
 	return "", nil
 }
 
-func TestFake(t *testing.T) {
+func TestFake_00(t *testing.T) {
 	tSender := &testSender{}
 	errH := ErrHandlerV2{sender: tSender}
 	errH.Init()
@@ -32,4 +33,18 @@ func TestFake(t *testing.T) {
 
 	}
 	errH.Close()
+}
+
+func TestFake_01(t *testing.T) {
+	tSender := &testSender{}
+	errH := ErrHandlerV2{sender: tSender}
+	errH.Init()
+	go errH.Send()
+	mails := make([]int, 1000)
+	for _, mail := range mails {
+		go errH.Push(baseErr.New(fmt.Sprintf("info - %d", mail)))
+	}
+	time.Sleep(1 * time.Nanosecond)
+	errH.Close()
+	t.Logf("处理了%d个错误", len(tSender.context))
 }

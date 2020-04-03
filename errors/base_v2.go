@@ -40,6 +40,7 @@ func (this *ErrHandlerV2) Send() {
 	for {
 		select {
 		case <-this.ctx.Done():
+			this.errChannel = nil
 			return
 		case err := <-this.errChannel:
 			this.sender.Send(err.Error())
@@ -49,8 +50,6 @@ func (this *ErrHandlerV2) Send() {
 
 func (this *ErrHandlerV2) Close() {
 	this.cancal()
-	close(this.errChannel)
-	this.errChannel = nil
 }
 
 type FakeSender struct{}
