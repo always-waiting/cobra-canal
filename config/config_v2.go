@@ -18,4 +18,5 @@ type CobraConfig struct {
 	ErrCfg errors.ErrHandlerConfig `toml:"err" description:"错误处理配置"`
 	Rebase bool                    `toml:"rebase"`
 	Port   int                     `toml:"port"`
+	Host   string                  `toml:"host"`
 }

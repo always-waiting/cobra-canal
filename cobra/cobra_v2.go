@@ -7,12 +7,13 @@ import (
 )
 
 type CobraV2 struct {
-	Canal   *canal.Canal            `description:"从库对象"`
-	Rebase  bool                    `description:"是否重置监控点"`
-	Handler *HandlerV2              `description:"处理事件的对象"`
-	ErrHr   *cobraErrors.ErrHandler `description:"错误处理对象"`
-	Log     *log.Logger             `description:"日志"`
+	Canal   *canal.Canal              `description:"从库对象"`
+	Rebase  bool                      `description:"是否重置监控点"`
+	Handler *HandlerV2                `description:"处理事件的对象"`
+	ErrHr   *cobraErrors.ErrHandlerV2 `description:"错误处理对象"`
+	Log     *log.Logger               `description:"日志"`
 }
 
 func MakeCobraV2() (c *CobraV2, err error) {
+	return
 }

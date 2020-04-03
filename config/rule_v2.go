@@ -16,6 +16,7 @@ type RuleConfigV2 struct {
 	TransferManage TransferManageConfig    `toml:"transfermanage"`
 	ConsumeManage  ConsumeManageConfig     `toml:"consumemanage"`
 	Port           int                     `toml:"port"`
+	Host           string                  `toml:"host"`
 }
 
 type FilterManageConfig struct {
