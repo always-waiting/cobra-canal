@@ -1,4 +1,4 @@
-package config
+package errors
 
 import (
 	//"bytes"
@@ -34,10 +34,10 @@ func (s *SentinelConfig) Send(doc string) (str string, err error) {
 	request.Header.Set("Authorization", "token "+s.Token)
 	client := &http.Client{}
 	resp, err := client.Do(request)
-	defer resp.Body.Close()
 	if err != nil {
 		return
 	} else {
+		defer resp.Body.Close()
 		body, _ := ioutil.ReadAll(resp.Body)
 		str = string(body)
 		sendMap := map[string]string{"type_id": s.TypeId, "level_id": s.LevelId, "message": doc}
@@ -55,5 +55,4 @@ func (s *SentinelConfig) Send(doc string) (str string, err error) {
 			}
 		}
 	}
-	return
 }

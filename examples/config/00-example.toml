@@ -1,0 +1,67 @@
+[cobra]
+rebase = true
+[cobra.config]# 监控binlog
+addr = "localhost:3306" # 监控的主库
+user = "root"
+password = "abc123"
+server_id = 90000000 # 从库唯一id标识
+include_table_regex = ["db_cmdb\\..*"]
+[cobra.db]
+addr = "localhost:3306"
+user = "root"
+password = "abc123"
+db = "db_cmdb_cobra"
+[cobra.log]
+type="file"
+level = "debug"
+dirname="/export/Logs/cobra/"
+[cobra.err]
+type="fake"
+
+
+
+
+[[rules]]# 处理工厂
+id = 1 # 工厂标识符
+desc = "工厂简单描述"
+queue_addr = "amqp://guest:guest@localhost:5672/cobra" # 队列地址
+[rules.log]
+type="file"
+level = "debug"
+dirname = "/export/Logs/cobra"
+[rules.db] # 主库链接配置
+user = "user"
+password = "passwd"
+db = "db"
+addr = "addr"
+[rules.err]
+type = "fake" # 错误处理类型
+[rules.filtermanage] # 过滤经理配置
+name = "filtername" # 经理的标识
+desc = "说明"
+percent = 50 # 用于判断是否需要开启新filter处理器
+db_required = true # 是否需要主库链接
+[rules.filtermanage.tablefilter]
+db_name = "db_cmdb"
+include_table = ["t_device_basic", "t_device_config"]
+[rules.filtermanage.aggregation]
+time = 10
+[[rules.filtermanage.aggregation.idxrule]]
+tables = ["t_table"]
+idx_field = "id"
+exclude_field = ["action_id"]
+[rules.filtermanage.worker] # 过滤工人配置
+type = "filter_type" # 加载用户自定义的过滤
+[rules.transfermanage] # 转换经理配置
+name = "transfername"
+desc = "说明"
+percent = 50
+db_required = true
+[rules.transfermanage.worker] # 转换工人配置
+type = "transfer_type"
+[rules.consumemanage] # 消费经理配置
+name = "consumename"
+desc = "说明"
+percent = 50
+[[rules.consumemanage.workers]] # 消费工人配置
+type = "consume_type"
