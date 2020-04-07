@@ -15,7 +15,7 @@ import (
 
 type CobraV2 struct {
 	Canal           *canal.Canal              `description:"从库对象"`
-	Http            *CobraHttp                `description:"交互http服务"`
+	Http            *CobraHttpV2              `description:"交互http服务"`
 	Handler         *HandlerV2                `description:"处理事件的对象"`
 	ErrHr           *cobraErrors.ErrHandlerV2 `description:"错误处理对象"`
 	Log             *log.Logger               `description:"日志"`
