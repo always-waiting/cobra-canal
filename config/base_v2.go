@@ -14,7 +14,7 @@ const (
 	IDXRULE_SEPARATOR = ","
 )
 
-var configV2 *configureV2
+var configV2 *ConfigureV2
 
 func LoadV2(configFile string) {
 	if configFile == "" {
@@ -24,7 +24,7 @@ func LoadV2(configFile string) {
 	if err := viper.ReadInConfig(); err != nil {
 		panic(err)
 	}
-	configV2 = &configureV2{}
+	configV2 = &ConfigureV2{}
 	if err := viper.Unmarshal(configV2, func(m *mapstructure.DecoderConfig) {
 		m.TagName = "toml"
 	}); err != nil {
@@ -33,7 +33,7 @@ func LoadV2(configFile string) {
 	configV2.path = viper.ConfigFileUsed()
 }
 
-func ConfigV2() *configureV2 {
+func ConfigV2() *ConfigureV2 {
 	if configV2 != nil {
 		return configV2
 	} else {

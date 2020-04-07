@@ -5,7 +5,7 @@ addr = "localhost:3306" # 监控的主库
 user = "root"
 password = "abc123"
 server_id = 90000000 # 从库唯一id标识
-include_table_regex = ["db_cmdb\\..*"]
+include_table_regex = ["db_cmdb\\..*", "db_cmdb_cobra\\.*"]
 [cobra.db]
 addr = "localhost:3306"
 user = "root"

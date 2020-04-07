@@ -5,10 +5,14 @@ import (
 	"github.com/siddontang/go-mysql/canal"
 )
 
-type configureV2 struct {
+type ConfigureV2 struct {
 	CobraCfg *CobraConfig   `toml:"cobra" description:"监控从库的配置"`
 	RulesCfg []RuleConfigV2 `toml:"rules" description:"监控规则工厂的配置"`
 	path     string
+}
+
+func (this *ConfigureV2) String() string {
+	return this.path
 }
 
 type CobraConfig struct {
