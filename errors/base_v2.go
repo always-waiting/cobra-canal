@@ -6,6 +6,14 @@ import (
 	"fmt"
 )
 
+func New(info string) error {
+	return errors.New(info)
+}
+
+func Errorf(format string, args ...interface{}) error {
+	return errors.New(fmt.Sprintf(format, args...))
+}
+
 type Sender interface {
 	Send(string) (string, error)
 }

@@ -2,12 +2,11 @@ package config
 
 import (
 	"fmt"
+	"github.com/always-waiting/cobra-canal/errors"
+	"github.com/siddontang/go-mysql/canal"
 	"path/filepath"
 	"reflect"
 	"testing"
-
-	"github.com/always-waiting/cobra-canal/errors"
-	"github.com/siddontang/go-mysql/canal"
 )
 
 func TestLoadConfigV2_00(t *testing.T) {
@@ -26,11 +25,11 @@ func TestLoadConfigV2_00(t *testing.T) {
 	}
 	{
 		cobraCfg := &CobraConfig{
-			Config: &canal.Config{Addr: "localhost:3306", User: "root", Password: "abc123", ServerID: 90000000, IncludeTableRegex: []string{"db_cmdb\\..*"}},
+			Config: &canal.Config{Addr: "localhost:3306", User: "root", Password: "abc123", ServerID: 90000000, IncludeTableRegex: []string{"db_cmdb\\..*", "db_cmdb_cobra\\.*"}},
 			DbCfg:  &MysqlConfig{Addr: "localhost:3306", User: "root", Passwd: "abc123", Db: "db_cmdb_cobra"},
 			LogCfg: LogConfig{Type: "file", Level: "debug", Dirname: "/export/Logs/cobra/"},
 			ErrCfg: errors.ErrHandlerConfig(map[string]string{"type": "fake"}),
-			Rebase: true,
+			Rebase: true, Buffer: 1000,
 		}
 		if !reflect.DeepEqual(cobraCfg, cfg.CobraCfg) {
 			t.Errorf("cobra配置不同")

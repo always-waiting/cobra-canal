@@ -1,9 +1,11 @@
 package config
 
 import (
+	"fmt"
 	"github.com/juju/errors"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
+	"path/filepath"
 )
 
 const (
@@ -39,4 +41,19 @@ func ConfigV2() *ConfigureV2 {
 	} else {
 		panic(errors.New(ERROR1))
 	}
+}
+
+func LoadTestCfg(absolutePath string) (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = errors.Errorf("%v", e)
+		}
+	}()
+	path, err := filepath.Abs("./")
+	if err != nil {
+		return err
+	}
+	file := fmt.Sprintf("%s/%s", path, absolutePath)
+	LoadV2(file)
+	return
 }

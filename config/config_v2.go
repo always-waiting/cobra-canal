@@ -23,4 +23,12 @@ type CobraConfig struct {
 	Rebase bool                    `toml:"rebase"`
 	Port   int                     `toml:"port"`
 	Host   string                  `toml:"host"`
+	Buffer int                     `toml:"buffer"`
+}
+
+func (this *CobraConfig) GetBuffer() int {
+	if this.Buffer == 0 {
+		this.Buffer = 500
+	}
+	return this.Buffer
 }

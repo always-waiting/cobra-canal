@@ -3,17 +3,16 @@ package collection
 import (
 	"context"
 	"github.com/always-waiting/cobra-canal/event"
-	"github.com/siddontang/go-mysql/schema"
 	"reflect"
 	"testing"
 	"time"
 )
 
-func createEvent(table string, id string) event.Event {
-	return event.Event{
-		Table: &schema.Table{
+func createEvent(table string, id string) event.EventV2 {
+	return event.EventV2{
+		Table: &event.Table{
 			Schema: "db", Name: table,
-			Columns: []schema.TableColumn{{Name: "id", Type: schema.TYPE_STRING}},
+			Columns: []string{"id"}, //[]schema.TableColumn{{Name: "id", Type: schema.TYPE_STRING}},
 		},
 		RawData: [][]interface{}{[]interface{}{id}},
 	}
@@ -83,7 +82,7 @@ func TestAggregator_00(t *testing.T) {
 		expected = append(expected, []Element{
 			{
 				Key:    "e1-0",
-				Events: []event.Event{createEvent("t_device_basic", "e1-0"), createEvent("t_device_basic", "e1-0")},
+				Events: []event.EventV2{createEvent("t_device_basic", "e1-0"), createEvent("t_device_basic", "e1-0")},
 			},
 		})
 	}
@@ -96,10 +95,10 @@ func TestAggregator_00(t *testing.T) {
 		expected = append(expected, []Element{
 			{
 				Key:    "e2-0",
-				Events: []event.Event{createEvent("t_device_basic", "e2-0")},
+				Events: []event.EventV2{createEvent("t_device_basic", "e2-0")},
 			}, {
 				Key:    "e2-0",
-				Events: []event.Event{createEvent("t_device_config", "e2-0")},
+				Events: []event.EventV2{createEvent("t_device_config", "e2-0")},
 			},
 		})
 	}
@@ -111,7 +110,7 @@ func TestAggregator_00(t *testing.T) {
 		expected = append(expected, []Element{
 			{
 				Key:    "e3-0",
-				Events: []event.Event{createEvent("t_device_basic", "e3-0"), createEvent("t_device_config", "e3-0")},
+				Events: []event.EventV2{createEvent("t_device_basic", "e3-0"), createEvent("t_device_config", "e3-0")},
 			},
 		})
 	}
@@ -126,23 +125,23 @@ func TestAggregator_00(t *testing.T) {
 		expected = append(expected, map[string]Element{
 			"e4-0": {
 				Key:    "e4-0",
-				Events: []event.Event{createEvent("t_device_basic", "e4-0")},
+				Events: []event.EventV2{createEvent("t_device_basic", "e4-0")},
 			},
 			"e4-1": Element{
 				Key:    "e4-1",
-				Events: []event.Event{createEvent("t_device_config", "e4-1")},
+				Events: []event.EventV2{createEvent("t_device_config", "e4-1")},
 			},
 			"e4-2": Element{
 				Key:    "e4-2",
-				Events: []event.Event{createEvent("t_device_config", "e4-2")},
+				Events: []event.EventV2{createEvent("t_device_config", "e4-2")},
 			},
 			"e4-3": Element{
 				Key:    "e4-3",
-				Events: []event.Event{createEvent("t_device_config", "e4-3")},
+				Events: []event.EventV2{createEvent("t_device_config", "e4-3")},
 			},
 			"e4-4": Element{
 				Key:    "e4-4",
-				Events: []event.Event{createEvent("t_device_config", "e4-4")},
+				Events: []event.EventV2{createEvent("t_device_config", "e4-4")},
 			},
 		})
 	}

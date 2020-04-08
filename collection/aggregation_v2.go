@@ -10,15 +10,19 @@ import (
 	"github.com/juju/errors"
 )
 
+var (
+	ErrCfgEmpty = errors.New("配置为空")
+)
+
 type Aggregatable interface{}
 
 type Indexer interface {
-	Idx(event.Event) (string, error)
+	Idx(event.EventV2) (string, error)
 }
 
 type Element struct {
 	Key    string
-	Events []event.Event
+	Events []event.EventV2
 }
 
 type Aggregator struct {
@@ -31,6 +35,31 @@ type Aggregator struct {
 	Ctx       context.Context
 	cancel    context.CancelFunc
 	ready     bool
+}
+
+func CreateAggregator(cfg *AggreConfig) (*Aggregator, error) {
+	if cfg == nil {
+		return nil, ErrCfgEmpty
+	}
+	gatherMap := make(map[string]Indexer)
+	for _, idx := range cfg.IdxRulesCfg {
+		tables := idx.Tables
+		for _, table := range tables {
+			gatherMap[table] = idx
+		}
+	}
+	du, _ := time.ParseDuration(fmt.Sprintf("%ds", cfg.Time))
+	ctx, cancel := context.WithCancel(context.Background())
+	ag := &Aggregator{
+		gatherMap: gatherMap,
+		Interval:  du,
+		keyChan:   make(chan string, 0),
+		pool:      make(map[string]Element),
+		timerList: make(map[string]*time.Timer),
+		Ctx:       ctx,
+		cancel:    cancel,
+	}
+	return ag, nil
 }
 
 func (this *Aggregator) Clean() {
@@ -57,6 +86,7 @@ func (this *Aggregator) Close() {
 	this.ready = false
 	this.Flush()
 	for !this.IsEmpty() {
+		time.Sleep(time.Second)
 	}
 	this.cancel()
 }
@@ -83,7 +113,7 @@ func (this *Aggregator) IsEmpty() bool {
 	return len(this.pool) == 0
 }
 
-func (this *Aggregator) Add(e event.Event) (key string, err error) {
+func (this *Aggregator) Add(e event.EventV2) (key string, err error) {
 	table := e.Table.Name
 	indexer, ok := this.gatherMap[table]
 	if !ok {
@@ -109,7 +139,7 @@ func (this *Aggregator) HasIdx(key string) bool {
 	return ok
 }
 
-func (this *Aggregator) Create(key string, e event.Event) (err error) {
+func (this *Aggregator) Create(key string, e event.EventV2) (err error) {
 	this.Mutex.Lock()
 	defer this.Mutex.Unlock()
 	if !this.ready {
@@ -118,7 +148,7 @@ func (this *Aggregator) Create(key string, e event.Event) (err error) {
 	}
 	ele := Element{
 		Key:    key,
-		Events: []event.Event{e},
+		Events: []event.EventV2{e},
 	}
 	this.timerList[key] = time.AfterFunc(this.Interval, func() {
 		this.keyChan <- ele.Key
@@ -127,7 +157,7 @@ func (this *Aggregator) Create(key string, e event.Event) (err error) {
 	return
 }
 
-func (this *Aggregator) Push(key string, e event.Event) (err error) {
+func (this *Aggregator) Push(key string, e event.EventV2) (err error) {
 	this.Mutex.Lock()
 	defer this.Mutex.Unlock()
 	if !this.ready {
@@ -141,7 +171,7 @@ func (this *Aggregator) Push(key string, e event.Event) (err error) {
 		this.Mutex.Lock()
 		ele := Element{
 			Key:    key,
-			Events: []event.Event{e},
+			Events: []event.EventV2{e},
 		}
 		this.timerList[key] = time.AfterFunc(this.Interval, func() {
 			this.keyChan <- ele.Key

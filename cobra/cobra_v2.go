@@ -13,16 +13,9 @@ import (
 	"net"
 )
 
-type CobraV2 struct {
-	Canal           *canal.Canal              `description:"从库对象"`
-	Http            *CobraHttpV2              `description:"交互http服务"`
-	Handler         *HandlerV2                `description:"处理事件的对象"`
-	ErrHr           *cobraErrors.ErrHandlerV2 `description:"错误处理对象"`
-	Log             *log.Logger               `description:"日志"`
-	CobraDb         *gorm.DB                  `description:"眼镜蛇数据库"`
-	startMonitorPos *cmysql.Position
-	cfg             *config.ConfigureV2
-}
+var (
+	ErrRuleEmpty = errors.New("规则配置为空")
+)
 
 func MakeCobraV2() (c *CobraV2, err error) {
 	c = &CobraV2{}
@@ -51,6 +44,25 @@ func MakeCobraV2() (c *CobraV2, err error) {
 	return
 }
 
+type CobraV2 struct {
+	Canal           *canal.Canal              `description:"从库对象"`
+	Http            *CobraHttpV2              `description:"交互http服务"`
+	Handler         *HandlerV2                `description:"处理事件的对象"`
+	ErrHr           *cobraErrors.ErrHandlerV2 `description:"错误处理对象"`
+	Log             *log.Logger               `description:"日志"`
+	CobraDb         *gorm.DB                  `description:"眼镜蛇数据库"`
+	startMonitorPos *cmysql.Position
+	cfg             *config.ConfigureV2
+}
+
+func (this *CobraV2) Cfg() *config.ConfigureV2 {
+	return this.cfg
+}
+
+func (this *CobraV2) RulesCfg() []config.RuleConfigV2 {
+	return this.cfg.RulesCfg
+}
+
 func (this *CobraV2) SetLog() (err error) {
 	this.cfg.CobraCfg.LogCfg.SetFilename("cobra.log")
 	this.Log, err = this.cfg.CobraCfg.LogCfg.GetLogger()
@@ -58,21 +70,17 @@ func (this *CobraV2) SetLog() (err error) {
 }
 
 func (this *CobraV2) SetHandler() (err error) {
-	rulesCfg := this.cfg.RulesCfg
 	defer func() {
 		if err == nil && this.Log != nil {
 			this.Log.Debug("SetHandler: 成功")
 		}
 	}()
 	defer this.Recover(&err)
-	this.Log.Debug("SetHandler: 初始化Master Handler...")
-	h, err := CreateHandlerV2(rulesCfg)
+	h, err := CreateHandlerV2(this)
 	if err != nil {
 		return
 	}
 	this.Handler = h
-	this.Handler.Log = this.Log
-	this.Handler.errHr = this.ErrHr
 	this.Canal.SetEventHandler(this.Handler)
 	return
 }

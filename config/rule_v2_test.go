@@ -9,7 +9,6 @@ import (
 	"github.com/always-waiting/cobra-canal/collection"
 	"github.com/always-waiting/cobra-canal/errors"
 	"github.com/always-waiting/cobra-canal/event"
-	"github.com/siddontang/go-mysql/schema"
 )
 
 func TestLoadConfigV2_Rule_00(t *testing.T) {
@@ -31,21 +30,24 @@ func TestLoadConfigV2_Rule_00(t *testing.T) {
 				FilterManage: FilterManageConfig{
 					Name: "filtername", Desc: "说明", Percent: 50, DbRequired: true,
 					TableFilterCfg: &TableFilterConfig{DbName: "db_cmdb", Include: []string{"t_device_basic", "t_device_config"}},
-					Worker:         WorkerConfig(map[string]interface{}{"type": "filter_type"}),
+					Worker:         WorkerConfig(map[string]interface{}{"filter_type": "base"}),
 					AggreCfg: &collection.AggreConfig{
 						Time: 10,
 						IdxRulesCfg: []collection.IdxRuleConfig{
-							{Tables: []string{"t_table"}, IdxField: "id", ExcludeField: []string{"action_id"}},
+							{Tables: []string{"t_device_basic"}, IdxField: "id", ExcludeField: []string{"action_id"}},
 						},
 					},
 				},
 				TransferManage: TransferManageConfig{
 					Name: "transfername", Desc: "说明", Percent: 50, DbRequired: true,
-					Worker: WorkerConfig(map[string]interface{}{"type": "transfer_type"}),
+					Workers: []WorkerConfig{
+						map[string]interface{}{"transfer_type": "base"},
+						map[string]interface{}{"transfer_type": "base"},
+					},
 				},
 				ConsumeManage: ConsumeManageConfig{
 					Name: "consumename", Desc: "说明", Percent: 50,
-					Workers: []WorkerConfig{WorkerConfig(map[string]interface{}{"type": "consume_type"})},
+					Workers: []WorkerConfig{WorkerConfig(map[string]interface{}{"consume_type": "base"})},
 				},
 			},
 		}
@@ -60,10 +62,10 @@ func TestIdxRuleConfig_00(t *testing.T) {
 		Tables:   []string{"t_device_basic", "t_device_config"},
 		IdxField: "id",
 	}
-	e := event.Event{
-		Table: &schema.Table{
+	e := event.EventV2{
+		Table: &event.Table{
 			Schema: "db_namn", Name: "t_device_basic",
-			Columns: []schema.TableColumn{{Name: "id", Type: schema.TYPE_NUMBER}},
+			Columns: []string{"id"},
 		},
 		RawData: [][]interface{}{[]interface{}{1}},
 	}

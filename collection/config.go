@@ -27,7 +27,7 @@ type IdxRuleConfig struct {
 	ExcludeField []string `toml:"exclude_field" description:"表主键字段"`
 }
 
-func (this IdxRuleConfig) Idx(e event.Event) (ret string, err error) {
+func (this IdxRuleConfig) Idx(e event.EventV2) (ret string, err error) {
 	var idxField, actionField interface{}
 	if idxField, err = e.GetColumnValue(0, this.IdxField); err != nil {
 		return
