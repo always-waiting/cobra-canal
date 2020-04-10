@@ -1,4 +1,4 @@
-package cobra
+package monitor
 
 import (
 	"fmt"
@@ -17,8 +17,8 @@ var (
 	ErrRuleEmpty = errors.New("规则配置为空")
 )
 
-func MakeCobraV2() (c *CobraV2, err error) {
-	c = &CobraV2{}
+func MakeMonitor() (c *Monitor, err error) {
+	c = &Monitor{}
 	c.cfg = config.ConfigV2()
 	if err = c.SetLog(); err != nil {
 		return
@@ -44,9 +44,9 @@ func MakeCobraV2() (c *CobraV2, err error) {
 	return
 }
 
-type CobraV2 struct {
+type Monitor struct {
 	Canal           *canal.Canal              `description:"从库对象"`
-	Http            *CobraHttpV2              `description:"交互http服务"`
+	Http            *MonitorHttpV2            `description:"交互http服务"`
 	Handler         *HandlerV2                `description:"处理事件的对象"`
 	ErrHr           *cobraErrors.ErrHandlerV2 `description:"错误处理对象"`
 	Log             *log.Logger               `description:"日志"`
@@ -55,21 +55,21 @@ type CobraV2 struct {
 	cfg             *config.ConfigureV2
 }
 
-func (this *CobraV2) Cfg() *config.ConfigureV2 {
+func (this *Monitor) Cfg() *config.ConfigureV2 {
 	return this.cfg
 }
 
-func (this *CobraV2) RulesCfg() []config.RuleConfigV2 {
+func (this *Monitor) RulesCfg() []config.RuleConfigV2 {
 	return this.cfg.RulesCfg
 }
 
-func (this *CobraV2) SetLog() (err error) {
+func (this *Monitor) SetLog() (err error) {
 	this.cfg.CobraCfg.LogCfg.SetFilename("cobra.log")
 	this.Log, err = this.cfg.CobraCfg.LogCfg.GetLogger()
 	return
 }
 
-func (this *CobraV2) SetHandler() (err error) {
+func (this *Monitor) SetHandler() (err error) {
 	defer func() {
 		if err == nil && this.Log != nil {
 			this.Log.Debug("SetHandler: 成功")
@@ -85,7 +85,7 @@ func (this *CobraV2) SetHandler() (err error) {
 	return
 }
 
-func (this *CobraV2) SetHttp() (err error) {
+func (this *Monitor) SetHttp() (err error) {
 	defer func() {
 		if err == nil && this.Log != nil {
 			this.Log.Debug("SetHttp: 成功")
@@ -96,7 +96,7 @@ func (this *CobraV2) SetHttp() (err error) {
 	return
 }
 
-func (this *CobraV2) SetErrHr() (err error) {
+func (this *Monitor) SetErrHr() (err error) {
 	cfg := this.cfg.CobraCfg
 	defer func() {
 		if err == nil && this.Log != nil {
@@ -110,7 +110,7 @@ func (this *CobraV2) SetErrHr() (err error) {
 	return
 }
 
-func (this *CobraV2) SetMonitorPos() (err error) {
+func (this *Monitor) SetMonitorPos() (err error) {
 	defer func() {
 		this.Recover(&err)
 		if err == nil && this.Log != nil {
@@ -139,7 +139,7 @@ func (this *CobraV2) SetMonitorPos() (err error) {
 	return
 }
 
-func (this *CobraV2) getCurrentPosition() (pos *cmysql.Position, err error) {
+func (this *Monitor) getCurrentPosition() (pos *cmysql.Position, err error) {
 	row, err := this.Canal.Execute("show master status")
 	if err != nil {
 		panic(err)
@@ -158,13 +158,13 @@ func (this *CobraV2) getCurrentPosition() (pos *cmysql.Position, err error) {
 	return
 }
 
-func (this *CobraV2) Recover(err *error) {
+func (this *Monitor) Recover(err *error) {
 	if e := recover(); e != nil {
-		*err = errors.Errorf("CobraV2未知错误:%v", e)
+		*err = errors.Errorf("Monitor未知错误:%v", e)
 	}
 }
 
-func (this *CobraV2) SetCanal() (err error) {
+func (this *Monitor) SetCanal() (err error) {
 	defer func() {
 		if err == nil && this.Log != nil {
 			this.Log.Debug("CreateCanal: 成功")
@@ -177,7 +177,7 @@ func (this *CobraV2) SetCanal() (err error) {
 	return
 }
 
-func (this *CobraV2) SetCobraDB() (err error) {
+func (this *Monitor) SetCobraDB() (err error) {
 	cfg := this.cfg.CobraCfg
 	defer func() {
 		if err == nil && this.Log != nil {
@@ -196,13 +196,13 @@ func (this *CobraV2) SetCobraDB() (err error) {
 	return
 }
 
-func (this *CobraV2) syncedPosition() (pos *cmysql.Position) {
+func (this *Monitor) syncedPosition() (pos *cmysql.Position) {
 	tmp := this.Canal.SyncedPosition()
 	pos = &tmp
 	return
 }
 
-func (this *CobraV2) SavePosition() (pos *cmysql.Position, err error) {
+func (this *Monitor) SavePosition() (pos *cmysql.Position, err error) {
 	pos = this.syncedPosition()
 	defer func() {
 		if err == nil {
@@ -236,7 +236,7 @@ func (this *CobraV2) SavePosition() (pos *cmysql.Position, err error) {
 	return
 }
 
-func (this *CobraV2) getRunningIp() (ip string, err error) {
+func (this *Monitor) getRunningIp() (ip string, err error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return
@@ -255,7 +255,7 @@ func (this *CobraV2) getRunningIp() (ip string, err error) {
 	return
 }
 
-func (this *CobraV2) Run() {
+func (this *Monitor) Run() {
 	go this.ErrHr.Send()
 	defer this.ErrHr.Close()
 	err := this.Canal.RunFrom(*this.startMonitorPos)
@@ -271,6 +271,6 @@ func (this *CobraV2) Run() {
 	return
 }
 
-func (this *CobraV2) Close() {
+func (this *Monitor) Close() {
 	this.Canal.Close()
 }

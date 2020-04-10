@@ -47,7 +47,7 @@ func TestMain(m *testing.M) {
 
 func TestManager(t *testing.T) {
 	if cfgMark == Cfg00 {
-		//testManager_Cfg00_1(t)
+		testManager_Cfg00_1(t)
 		testManager_Cfg00_2(t)
 	}
 }

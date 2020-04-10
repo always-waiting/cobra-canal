@@ -1,4 +1,4 @@
-package cobra
+package monitor
 
 type PosInfo struct {
 	ServiceId uint32 `gorm:"column:service_id"`

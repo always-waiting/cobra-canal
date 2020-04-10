@@ -1,4 +1,4 @@
-package cobra
+package monitor
 
 import (
 	"fmt"
@@ -19,11 +19,11 @@ const (
 	EXCHANGE_NAME = "cobra_handler"
 )
 
-func CreateHandlerV2(c *CobraV2) (h *HandlerV2, err error) {
+func CreateHandlerV2(c *Monitor) (h *HandlerV2, err error) {
 	h = &HandlerV2{
 		Log:       c.Log,
 		errHr:     c.ErrHr,
-		cobraV2:   c,
+		Monitor:   c,
 		bufferNum: c.cfg.CobraCfg.GetBuffer(),
 		buffer:    make([]event.EventV2, 0),
 	}
@@ -36,7 +36,7 @@ func CreateHandlerV2(c *CobraV2) (h *HandlerV2, err error) {
 type HandlerV2 struct {
 	Log            *log.Logger
 	errHr          *cobraErrors.ErrHandlerV2
-	cobraV2        *CobraV2
+	Monitor        *Monitor
 	filterManagers []*filter.Manager
 	bufferNum      int
 	buffer         []event.EventV2
@@ -45,7 +45,7 @@ type HandlerV2 struct {
 
 func (this *HandlerV2) InitFilterManager() (err error) {
 	this.filterManagers = make([]*filter.Manager, 0)
-	rulesCfg := this.cobraV2.RulesCfg()
+	rulesCfg := this.Monitor.RulesCfg()
 	for _, rule := range rulesCfg {
 		fm, err := filter.CreateManager(rule)
 		if err != nil {
