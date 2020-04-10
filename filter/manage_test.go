@@ -83,19 +83,9 @@ func testManager_Cfg00_1(t *testing.T) {
 func testManager_Cfg00_2(t *testing.T) {
 	cfg := config.ConfigV2()
 	ruleCfg := cfg.RulesCfg[0]
-	manager, err := CreateManager(ruleCfg)
+	manager, err := CreateManagerWithNext(ruleCfg)
 	if err != nil {
 		t.Errorf("创建filter manager失败: %s", err)
-	}
-	err = manager.SetNextManager()
-	if err != nil {
-		t.Errorf("创建下游队列失败: %s", err)
-	}
-	if err = manager.SetAggregator(); err != nil {
-		t.Errorf("创建聚合器失败: %s", err)
-	}
-	if err := manager.SetWorker(); err != nil {
-		t.Errorf("生成worker失败: %s", err)
 	}
 	{
 		for i := 0; i < 2; i++ {
@@ -118,7 +108,7 @@ func testManager_Cfg00_2(t *testing.T) {
 			}
 		}
 	}
-	manager.Start()
+	go func() { manager.Start() }()
 	time.Sleep(5 * time.Second)
 	manager.Close()
 }

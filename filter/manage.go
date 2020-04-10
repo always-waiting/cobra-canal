@@ -34,6 +34,22 @@ func CreateManager(rule config.RuleConfigV2) (ret *Manager, err error) {
 	return
 }
 
+func CreateManagerWithNext(rule config.RuleConfigV2) (ret *Manager, err error) {
+	if ret, err = CreateManager(rule); err != nil {
+		return
+	}
+	if err = ret.SetNextManager(); err != nil {
+		return
+	}
+	if err = ret.SetAggregator(); err != nil {
+		return
+	}
+	if err = ret.SetWorker(); err != nil {
+		return
+	}
+	return
+}
+
 type Manager struct {
 	wg         sync.WaitGroup
 	Cfg        config.RuleConfigV2
@@ -107,13 +123,13 @@ func (this *Manager) SetAggregator() (err error) {
 	return
 }
 
-func (this *Manager) Start() {
+func (this *Manager) Start() error {
 	go this.errHr.Send()
 	if this.aggregator != nil {
 		this.wg.Add(1)
 		go this.Aggregator()
 	}
-	go this.Receive()
+	return this.Receive()
 }
 
 func (this *Manager) Receive() error {
