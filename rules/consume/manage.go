@@ -1,12 +1,14 @@
-package transfer
+package consume
 
 import (
+	"bytes"
+	"compress/flate"
 	"context"
 	"github.com/always-waiting/cobra-canal/config"
 	"github.com/always-waiting/cobra-canal/errors"
-	"github.com/always-waiting/cobra-canal/event"
 	"github.com/always-waiting/cobra-canal/rules"
 	"github.com/streadway/amqp"
+	"io"
 )
 
 type Manager struct {
@@ -15,19 +17,16 @@ type Manager struct {
 }
 
 func CreateManager(rule config.RuleConfigV2) (ret *Manager, err error) {
-	baseManager, err := rules.CreateManager(rule, config.TransferWorker)
+	base, err := rules.CreateManager(rule, config.ConsumeWorker)
 	if err != nil {
 		return
 	}
-	ret = &Manager{Manager: baseManager}
+	ret = &Manager{Manager: base}
 	return
 }
 
 func CreateManagerWithNext(rule config.RuleConfigV2) (ret *Manager, err error) {
 	if ret, err = CreateManager(rule); err != nil {
-		return
-	}
-	if err = ret.SetNextManager(config.ConsumeWorker); err != nil {
 		return
 	}
 	if err = ret.SetWorker(); err != nil {
@@ -92,29 +91,26 @@ func (this *Manager) Consume(idx int, in <-chan amqp.Delivery, ctx context.Conte
 				this.Ack(info.DeliveryTag, false)
 				continue
 			}
-			var input []event.EventV2
-			var err error
+			var input []byte
 			if this.Cfg.Compress {
-				if input, err = event.Decompress(info.Body); err != nil {
-					this.ErrPush(err)
-					this.Ack(info.DeliveryTag, false)
-					continue
-				}
+				inbuffer := bytes.NewBuffer(info.Body)
+				flateReader := flate.NewReader(inbuffer)
+				defer flateReader.Close()
+				out := bytes.NewBuffer(nil)
+				io.Copy(out, flateReader)
+				input = out.Bytes()
 			} else {
-				if input, err = event.FromJSON(info.Body); err != nil {
-					this.ErrPush(err)
-					this.Ack(info.DeliveryTag, false)
-					continue
-				}
+				input = info.Body
 			}
 			if err := this.Ack(info.DeliveryTag, false); err != nil {
 				this.ErrPush(err)
 			}
-			this.Log.Infof("转换器%d: 获取事件组: %s\n", idx, input)
+			this.Log.Debugf("消费器%d: 获取消费事件: %v\n", idx, string(input))
 			if err := worker.Invoke(Param{Data: input, Idx: idx}); err != nil {
 				this.ErrPush(err)
 			}
 		}
+
 	}
 }
 

@@ -2,6 +2,7 @@ package collection
 
 import (
 	"context"
+	"fmt"
 	"github.com/always-waiting/cobra-canal/event"
 	"reflect"
 	"testing"
@@ -16,6 +17,60 @@ func createEvent(table string, id string) event.EventV2 {
 		},
 		RawData: [][]interface{}{[]interface{}{id}},
 	}
+}
+
+func TestAggregator_01(t *testing.T) {
+	idxRulesCfg := []IdxRuleConfig{
+		{Tables: []string{"t_device_basic", "t_device_config"}, IdxField: "id"},
+	}
+	gatherMap := make(map[string]Indexer)
+	for _, idx := range idxRulesCfg {
+		tables := idx.Tables
+		for _, table := range tables {
+			gatherMap[table] = idx
+		}
+	}
+	duration, _ := time.ParseDuration("3s")
+	ctx, cancel := context.WithCancel(context.Background())
+	aggre := Aggregator{
+		gatherMap: gatherMap,
+		Interval:  duration,
+		keyChan:   make(chan string, 0),
+		pool:      make(map[string]Element),
+		timerList: make(map[string]*time.Timer),
+		Ctx:       ctx,
+		cancel:    cancel,
+	}
+	out := aggre.Collection()
+	count := 0
+	done := make(chan struct{}, 0)
+	go func() {
+		for {
+			select {
+			case <-out:
+				count++
+			case <-aggre.Ctx.Done():
+				done <- struct{}{}
+				return
+
+			}
+		}
+	}()
+	max := 70000
+	idx := 0
+	for idx < max {
+		aggre.Add(createEvent("t_device_basic", fmt.Sprintf("%d", idx)))
+		idx++
+	}
+	for {
+		fmt.Println(count)
+		time.Sleep(10 * time.Second)
+		if count == 70000 {
+			aggre.Close()
+			break
+		}
+	}
+	fmt.Println(count)
 }
 
 func TestAggregator_00(t *testing.T) {

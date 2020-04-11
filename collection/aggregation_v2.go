@@ -93,12 +93,13 @@ func (this *Aggregator) Close() {
 
 func (this *Aggregator) Collection() (out chan Element) {
 	this.ready = true
-	out = make(chan Element, 0)
+	out = make(chan Element)
 	go func() {
 		for {
 			select {
 			case key := <-this.keyChan:
-				this.MoveTo(key, out)
+				info, _ := this.MoveTo(key)
+				out <- info
 			case <-this.Ctx.Done():
 				return
 			}
@@ -186,7 +187,7 @@ func (this *Aggregator) Push(key string, e event.EventV2) (err error) {
 	return
 }
 
-func (this *Aggregator) MoveTo(key string, out chan<- Element) (ret Element, err error) {
+func (this *Aggregator) MoveTo(key string) (ret Element, err error) {
 	this.Mutex.Lock()
 	defer this.Mutex.Unlock()
 	ret, ok := this.pool[key]
@@ -196,7 +197,6 @@ func (this *Aggregator) MoveTo(key string, out chan<- Element) (ret Element, err
 	}
 	delete(this.pool, key)
 	delete(this.timerList, key)
-	out <- ret
 	return
 }
 

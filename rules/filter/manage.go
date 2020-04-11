@@ -72,7 +72,10 @@ func (this *Manager) Aggregator() {
 			return
 		case ele := <-out:
 			this.Log.Infof("把事件组%s发送到数据转换池", ele.Key)
-			this.Next.Push(ele.Events)
+			if err := this.Next.Push(ele.Events); err != nil {
+				this.Log.Infof("发送数据转换池失败: %s", err)
+				this.ErrPush(err)
+			}
 		}
 	}
 }
@@ -117,42 +120,30 @@ func (this *Manager) Consume(in <-chan amqp.Delivery, ctx context.Context) {
 			return
 		case info := <-in:
 			if len(info.Body) == 0 {
+				this.Ack(info.DeliveryTag, false)
 				continue
 			}
 			e := event.EventV2{}
 			if this.Cfg.Compress {
 				if err := e.Decompress(info.Body); err != nil {
+					this.Ack(info.DeliveryTag, false)
 					this.ErrPush(err)
 					continue
 				}
 			} else {
 				if err := e.FromJSON(info.Body); err != nil {
+					this.Ack(info.DeliveryTag, false)
 					this.ErrPush(err)
 					continue
 				}
 			}
-			info.Ack(false)
-			this.Log.Infof("获取事件:%s\n", e)
-			this.worker.Invoke(&e)
-			/*
-				// 这个逻辑依然是一个个的处理，不能同时处理多个
-				// 使用worker过滤事件
-				if !this.worker.Analyze(e) {
-					this.Log.Infof("不符合条件，忽略事件")
-					continue
-				}
-				// 查看聚合
-				if this.aggregator != nil {
-					if key, err := this.aggregator.Add(e); err != nil {
-						this.Log.Debugf("事件(%s)聚合出错: %s", e, err)
-						go this.ErrPush(err)
-					} else {
-						this.Log.Debugf("事件聚合到%s键中", key)
-					}
-				} else {
-					this.Next.Push([]event.EventV2{e})
-				}
-			*/
+			if err := this.Ack(info.DeliveryTag, false); err != nil {
+				this.ErrPush(err)
+			}
+			this.Log.Debugf("获取事件:%s\n", e)
+			if err := this.worker.Invoke(&e); err != nil {
+				this.ErrPush(err)
+			}
 		}
 	}
 }

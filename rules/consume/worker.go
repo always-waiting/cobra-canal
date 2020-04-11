@@ -1,9 +1,8 @@
-package transfer
+package consume
 
 import (
 	"github.com/always-waiting/cobra-canal/config"
 	"github.com/always-waiting/cobra-canal/errors"
-	"github.com/always-waiting/cobra-canal/event"
 	"github.com/always-waiting/cobra-canal/rules"
 	"github.com/panjf2000/ants/v2"
 )
@@ -16,17 +15,18 @@ var (
 	errOutOfIndex = errors.New("下标越界")
 )
 
-type TransferRuler func([]event.EventV2) (interface{}, error)
+type ConsumeRuler func([]byte) error
 
-func (this TransferRuler) Run(i interface{}) (interface{}, error) {
-	input, ok := i.([]event.EventV2)
+func (this ConsumeRuler) Run(i interface{}) (interface{}, error) {
+	input, ok := i.([]byte)
 	if !ok {
 		return nil, errInputType
 	}
-	return this(input)
+	err := this(input)
+	return nil, err
 }
 
-func AddTransferRuler(name string, f TransferRuler) {
+func AddConsumeRuler(name string, f ConsumeRuler) {
 	if acts, ok := workerTypeMap[name]; ok {
 		acts = append(acts, f)
 		workerTypeMap[name] = acts
@@ -41,7 +41,7 @@ type Worker struct {
 }
 
 func CreateWorker(manager *Manager, idx int) (ret *Worker, err error) {
-	WCfg, err := manager.Cfg.Worker(config.TransferWorker, idx)
+	WCfg, err := manager.Cfg.Worker(config.ConsumeWorker, idx)
 	if err != nil {
 		return
 	}
@@ -53,7 +53,7 @@ func CreateWorker(manager *Manager, idx int) (ret *Worker, err error) {
 		return nil, err
 	}
 	if err = ret.SetPool(
-		ret.transfer,
+		ret.consume,
 		ants.WithPanicHandler(func(i interface{}) {
 			ret.manager.ErrPush(i)
 		}),
@@ -64,7 +64,7 @@ func CreateWorker(manager *Manager, idx int) (ret *Worker, err error) {
 }
 
 func CreateWorkers(manager *Manager) (ret []*Worker, err error) {
-	wCfgs, err := manager.Cfg.Workers(config.TransferWorker)
+	wCfgs, err := manager.Cfg.Workers(config.ConsumeWorker)
 	if err != nil {
 		return
 	}
@@ -79,7 +79,7 @@ func CreateWorkers(manager *Manager) (ret []*Worker, err error) {
 			return nil, err
 		}
 		if err = worker.SetPool(
-			worker.transfer,
+			worker.consume,
 			ants.WithPanicHandler(func(i interface{}) {
 				worker.manager.ErrPush(i)
 			}),
@@ -92,32 +92,26 @@ func CreateWorkers(manager *Manager) (ret []*Worker, err error) {
 }
 
 type Param struct {
-	Data []event.EventV2
+	Data []byte
 	Idx  int
 }
 
-func (this *Worker) transfer(i interface{}) {
+func (this *Worker) consume(i interface{}) {
 	params := i.(Param)
 	acts := this.Actions()
+	if len(acts) == 0 {
+		this.manager.Log.Debugf("消费器%d: 默认消费模式: %s", params.Idx, string(params.Data))
+		return
+	}
 	var ret, input interface{}
 	var err error
-	if len(acts) == 0 {
-		if ret, err = event.ToJSON(params.Data); err != nil {
+	input = params.Data
+	for _, act := range acts {
+		ret, err = act.Run(input)
+		if err != nil {
 			this.manager.ErrPush(err)
 			return
 		}
-	} else {
-		input = params.Data
-		for _, act := range acts {
-			ret, err = act.Run(input)
-			if err != nil {
-				this.manager.ErrPush(err)
-				return
-			}
-			input = ret
-		}
+		input = ret
 	}
-	this.manager.Log.Debugf("转换器%d: 向消费池推送数据", params.Idx)
-	this.manager.Next.PushByIdx(params.Idx, ret)
-	this.manager.Log.Debugf("转换器%d: 推送成功", params.Idx)
 }

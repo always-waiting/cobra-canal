@@ -10,7 +10,7 @@ const (
 )
 
 func TestSess_00(t *testing.T) {
-	sess, err := New("test", TEST_ADDR, []string{"test_queue1"})
+	sess, err := New("test", TEST_ADDR, "test_queue1")
 	if err != nil {
 		t.Errorf("生成session错误%s", err)
 	}

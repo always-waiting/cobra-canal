@@ -3,27 +3,27 @@ package run
 import (
 	"github.com/always-waiting/cobra-canal/config"
 
-	"github.com/always-waiting/cobra-canal/rules/filter"
+	"github.com/always-waiting/cobra-canal/rules/transfer"
 	"github.com/spf13/cobra"
 
 	"sync"
 )
 
-var filterCmd = &cobra.Command{
-	Use:     "filter",
-	Short:   "启动过滤流程",
+var transferCmd = &cobra.Command{
+	Use:     "transfer",
+	Short:   "启动转换数据流程",
 	Version: "2.0.0",
-	Run:     filterCmdRun,
+	Run:     transferCmdRun,
 }
 
-func filterCmdRun(cmd *cobra.Command, args []string) {
+func transferCmdRun(cmd *cobra.Command, args []string) {
 	cfgFile, _ := cmd.Flags().GetString("cfg")
 	config.LoadV2(cfgFile)
 	cfg := config.ConfigV2()
 	rulesCfg := cfg.RulesCfg
-	managers := make([]*filter.Manager, 0)
+	managers := make([]*transfer.Manager, 0)
 	for _, ruleCfg := range rulesCfg {
-		manager, err := filter.CreateManagerWithNext(ruleCfg)
+		manager, err := transfer.CreateManagerWithNext(ruleCfg)
 		if err != nil {
 			panic(err)
 		}
@@ -32,11 +32,10 @@ func filterCmdRun(cmd *cobra.Command, args []string) {
 	wg := sync.WaitGroup{}
 	for _, manager := range managers {
 		wg.Add(1)
-		go func(m *filter.Manager) {
+		go func(m *transfer.Manager) {
 			defer func() { wg.Done() }()
 			m.Start()
 		}(manager)
-
 	}
 	wg.Wait()
 }

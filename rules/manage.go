@@ -175,3 +175,7 @@ func (this *Manager) SeeDelivery(info amqp.Delivery) {
 	this.Log.Infof("DeliveryTag: %v", info.DeliveryTag)
 	this.Log.Infof("Redelivered: %v", info.Redelivered)
 }
+
+func (this *Manager) Ack(tag uint64, multiple bool) error {
+	return this.sess.Chan().Ack(tag, multiple)
+}

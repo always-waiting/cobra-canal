@@ -68,7 +68,7 @@ func (this *Worker) filter(i interface{}) {
 	for _, act := range this.Actions() {
 		ret, err := act.Run(e)
 		if err != nil {
-			go this.manager.ErrPush(err)
+			this.manager.ErrPush(err)
 			return
 		}
 		flag = ret.(bool)
@@ -80,7 +80,7 @@ func (this *Worker) filter(i interface{}) {
 	if this.manager.aggregator != nil {
 		if key, err := this.manager.aggregator.Add(*e); err != nil {
 			this.manager.Log.Debugf("事件(%s)聚合出错: %s", e, err)
-			go this.manager.ErrPush(err)
+			this.manager.ErrPush(err)
 		} else {
 			this.manager.Log.Debugf("事件聚合到%s键中", key)
 		}
@@ -88,31 +88,3 @@ func (this *Worker) filter(i interface{}) {
 		this.manager.Next.Push([]event.EventV2{*e})
 	}
 }
-
-/*
-// 这个逻辑依然是一个个的处理，不能同时处理多个
-func (this *Worker) filter(i interface{}) {
-	e := i.(*event.EventV2)
-	for _, act := range this.Actions() {
-		ret, err := act.Run(e)
-		if err != nil {
-			this.manager.ErrPush(err)
-			e.SetPass(false)
-			return
-		}
-
-		flag := ret.(bool)
-		if !flag {
-			e.SetPass(flag)
-			return
-		}
-	}
-	e.SetPass(true)
-}
-
-func (this *Worker) Analyze(e event.EventV2) (ret bool) {
-	e.CreatePass()
-	this.Invoke(&e)
-	return e.Pass()
-}
-*/

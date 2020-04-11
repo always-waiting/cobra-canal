@@ -1,14 +1,13 @@
-package filter
+package transfer
 
 import (
 	"flag"
 	"fmt"
+	"os"
 	"testing"
-	"time"
 
 	"github.com/always-waiting/cobra-canal/config"
 	"github.com/always-waiting/cobra-canal/event"
-	"os"
 )
 
 const (
@@ -20,7 +19,7 @@ const (
 
 var (
 	confMap = map[string]string{
-		Cfg00: "../examples/config/00-example.toml",
+		Cfg00: "../../examples/config/00-example.toml",
 	}
 	cfgMark string
 )
@@ -57,58 +56,33 @@ func testManager_Cfg00_1(t *testing.T) {
 	ruleCfg := cfg.RulesCfg[0]
 	manager, err := CreateManager(ruleCfg)
 	if err != nil {
-		t.Errorf("创建filter manager失败: %s", err)
+		t.Errorf("创建transfer manager失败: %s", err)
 	}
-	if manager.Name() != "filter_1_filtername" {
-		t.Errorf("filter manager的名字解析失败, got(%s), expected(%s)", manager.Name(), "filter_1_filtername")
+	if name, err := manager.Name(); err != nil {
+		t.Errorf("transfer manager解析名称失败")
+	} else {
+		if name != "transfer_1_transfername" {
+			t.Errorf("filter manager的名字解析失败, got(%s), expected(%s)", name, "transfer_1_transfername")
+		}
 	}
-	{
-		e1 := event.EventV2{
-			Table: &event.Table{Schema: "db", Name: "name"},
-		}
-		if manager.IsTablePass(e1) {
-			t.Errorf("%s通过了基础表过滤", e1)
-		}
 
-		e2 := event.EventV2{
-			Table: &event.Table{Schema: "db_cmdb", Name: "t_device_basic"},
-		}
-		if !manager.IsTablePass(e2) {
-			t.Errorf("%s没有通过了基础表过滤", e2)
-		}
-	}
-	manager.Close()
 }
 
 func testManager_Cfg00_2(t *testing.T) {
 	cfg := config.ConfigV2()
 	ruleCfg := cfg.RulesCfg[0]
-	manager, err := CreateManagerWithNext(ruleCfg)
+	manager, err := CreateManager(ruleCfg)
 	if err != nil {
-		t.Errorf("创建filter manager失败: %s", err)
+		t.Errorf("创建transfer manager失败: %s", err)
 	}
 	{
+		e1, _ := event.FromJSON([]byte(EXAMPLE1))
+		e2, _ := event.FromJSON([]byte(EXAMPLE2))
+		e3, _ := event.FromJSON([]byte(EXAMPLE3))
+		es := []event.EventV2{e1[0], e2[0], e3[0]}
 		for i := 0; i < 2; i++ {
-			e1 := event.EventV2{}
-			e1.FromJSON([]byte(EXAMPLE1))
-			if err := manager.Push(e1); err != nil {
-				t.Errorf("放入事件失败: %s", err)
-			}
-			e2 := event.EventV2{}
-			e2.FromJSON([]byte(EXAMPLE2))
-			if err := manager.Push(e2); err != nil {
-				t.Errorf("放入事件失败: %s", err)
-			}
-		}
-		for i := 0; i < 1; i++ {
-			e3 := event.EventV2{}
-			e3.FromJSON([]byte(EXAMPLE3))
-			if err := manager.Push(e3); err != nil {
-				t.Errorf("放入事件失败: %s", err)
-			}
+			manager.Push(es)
 		}
 	}
-	go func() { manager.Start() }()
-	time.Sleep(5 * time.Second)
 	manager.Close()
 }

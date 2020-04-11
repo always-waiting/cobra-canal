@@ -14,4 +14,6 @@ func init() {
 	RootCmd.PersistentFlags().String("cfg", "", "配置文件")
 	RootCmd.AddCommand(monitorCmd)
 	RootCmd.AddCommand(filterCmd)
+	RootCmd.AddCommand(transferCmd)
+	RootCmd.AddCommand(consumeCmd)
 }

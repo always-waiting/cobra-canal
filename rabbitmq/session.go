@@ -53,6 +53,10 @@ type Session struct {
 	isQueueExist    func(string) bool
 }
 
+func (this *Session) Chan() *amqp.Channel {
+	return this.channel
+}
+
 func New(exName, addr string, eqName ...string) (*Session, error) {
 	session := &Session{
 		queuenames:   eqName,
@@ -79,6 +83,12 @@ func (this *Session) IsReady() bool {
 func (this *Session) Debug(data string) {
 	if this.Log != nil {
 		this.Log.Debug(data)
+	}
+}
+
+func (this *Session) Debugf(data string, params ...interface{}) {
+	if this.Log != nil {
+		this.Log.Debugf(data, params...)
 	}
 }
 
@@ -182,7 +192,7 @@ func (this *Session) init(conn *amqp.Connection) error {
 func (this *Session) changeChannel(channel *amqp.Channel) {
 	this.channel = channel
 	this.notifyChanClose = make(chan *amqp.Error)
-	this.notifyConfirm = make(chan amqp.Confirmation, 1)
+	this.notifyConfirm = make(chan amqp.Confirmation, 100)
 	this.channel.NotifyClose(this.notifyChanClose)
 	this.channel.NotifyPublish(this.notifyConfirm)
 	if this.ReChanSignal != nil {
@@ -225,32 +235,6 @@ func (this *Session) Push(data []byte) error {
 		}(idx)
 	}
 	wg.Wait()
-	/*
-		for _, queuename := range this.queuenames {
-		LOOP1:
-			for {
-				err := this.UnsafePush(data, queuename)
-				if err != nil {
-					this.Debug("Push failed. Retrying...")
-					select {
-					case <-this.done:
-						return errShutdown
-					case <-time.After(resendDelay):
-					}
-					continue
-				}
-				select {
-				case confirm := <-this.notifyConfirm:
-					if confirm.Ack {
-						this.Debug("Push confirmed!")
-						break LOOP1
-					}
-				case <-time.After(resendDelay):
-				}
-				this.Debug("Push didn't confirm. Retrying...")
-			}
-		}
-	*/
 	return nil
 }
 
@@ -263,7 +247,7 @@ LOOP2:
 	for {
 		err := this.UnsafePush(data, queuename)
 		if err != nil {
-			this.Debug("Push failed. Retrying...")
+			this.Debugf("队列%d: Push failed. Retrying...", idx)
 			select {
 			case <-this.done:
 				return errShutdown
@@ -274,12 +258,12 @@ LOOP2:
 		select {
 		case confirm := <-this.notifyConfirm:
 			if confirm.Ack {
-				this.Debug("Push confirmed!")
+				this.Debugf("队列%d: Push confirmed!", idx)
 				break LOOP2
 			}
 		case <-time.After(resendDelay):
 		}
-		this.Debug("Push didn't confirm. Retrying...")
+		this.Debugf("队列%d: Push didn't confirm. Retrying...", idx)
 	}
 	return nil
 }
