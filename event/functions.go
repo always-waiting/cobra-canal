@@ -94,11 +94,11 @@ func getTableNameByQuery(query string) (ret string, err error) {
 	return
 }
 
-func ToJSON(in []EventV2) ([]byte, error) {
+func ToJSON(in interface{}) ([]byte, error) {
 	return json.Marshal(in)
 }
 
-func Compress(in []EventV2) ([]byte, error) {
+func Compress(in interface{}) ([]byte, error) {
 	info, err := json.Marshal(in)
 	if err != nil {
 		return nil, err

@@ -8,6 +8,7 @@ import (
 	"github.com/juju/errors"
 	"github.com/siddontang/go-mysql/schema"
 	"io"
+	"reflect"
 )
 
 const (
@@ -26,7 +27,7 @@ var (
 	ErrRowNum         = errors.New("原始数据条数不对")
 	ErrOnDDLEmpty     = errors.New("操作动作为空")
 	ErrSyncNotDefine  = errors.New("同步类型未定义")
-	ErrTypeErr        = errors.New("interface换行类型出错")
+	ErrTypeErr        = errors.New("interface转换类型出错")
 )
 
 type Table struct {
@@ -178,15 +179,30 @@ func (e *EventV2) IsLegal() bool {
 	return true
 }
 
-func (this *EventV2) GetInt(row int, column string) (ret int, err error) {
+func (this *EventV2) GetInt64(row int, column string) (ret int64, err error) {
 	var i interface{}
-	var ok bool
 	if i, err = this.GetColumnValue(row, column); err != nil {
 		return
 	}
-	if ret, ok = i.(int); !ok {
+	switch i.(type) {
+	case int, int8, int32, int64, uint, uint8, uint32, uint64:
+		ret = reflect.ValueOf(i).Int()
+	default:
 		err = ErrTypeErr
+	}
+	return
+}
+
+func (this *EventV2) GetFloat(row int, column string) (ret float64, err error) {
+	var i interface{}
+	if i, err = this.GetColumnValue(row, column); err != nil {
 		return
+	}
+	switch i.(type) {
+	case float64, float32:
+		ret = reflect.ValueOf(i).Float()
+	default:
+		err = ErrTypeErr
 	}
 	return
 }

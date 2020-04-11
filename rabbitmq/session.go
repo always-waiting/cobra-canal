@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/siddontang/go-log/log"
 	"github.com/streadway/amqp"
+	"sync"
 	"time"
 )
 
@@ -19,11 +20,23 @@ const (
 )
 
 var (
-	errNotConnected  = errors.New("not connected to a server")
-	errAlreadyClosed = errors.New("already closed: not connected to the server")
-	errShutdown      = errors.New("session is shutting down")
-	errOutOfIdx      = errors.New("下标越界")
+	errNotConnected    = errors.New("not connected to a server")
+	errAlreadyClosed   = errors.New("already closed: not connected to the server")
+	errShutdown        = errors.New("session is shutting down")
+	errOutOfIdx        = errors.New("下标越界")
+	errQueueNotDefined = errors.New("队列名称没定义")
 )
+
+func makeQueueExist(list []string) func(string) bool {
+	cache := make(map[string]struct{})
+	for _, name := range list {
+		cache[name] = struct{}{}
+	}
+	return func(name string) bool {
+		_, ok := cache[name]
+		return ok
+	}
+}
 
 type Session struct {
 	queuenames      []string
@@ -37,6 +50,7 @@ type Session struct {
 	notifyConfirm   chan amqp.Confirmation
 	isReady         bool
 	ReChanSignal    chan bool
+	isQueueExist    func(string) bool
 }
 
 func New(exName, addr string, eqName ...string) (*Session, error) {
@@ -44,6 +58,7 @@ func New(exName, addr string, eqName ...string) (*Session, error) {
 		queuenames:   eqName,
 		exchangename: exName,
 		done:         make(chan bool),
+		//isQueueExist: makeQueueExist(eqName),
 	}
 	go session.handleReconnect(addr)
 	count := 0
@@ -201,29 +216,70 @@ func (this *Session) Push(data []byte) error {
 	if !this.isReady {
 		return errors.New("failed to push push: not connected")
 	}
-	for _, queuename := range this.queuenames {
-	LOOP1:
-		for {
-			err := this.UnsafePush(data, queuename)
-			if err != nil {
-				this.Debug("Push failed. Retrying...")
+	wg := sync.WaitGroup{}
+	for idx, _ := range this.queuenames {
+		wg.Add(1)
+		go func(i int) {
+			defer func() { wg.Done() }()
+			this.PushByIdx(i, data)
+		}(idx)
+	}
+	wg.Wait()
+	/*
+		for _, queuename := range this.queuenames {
+		LOOP1:
+			for {
+				err := this.UnsafePush(data, queuename)
+				if err != nil {
+					this.Debug("Push failed. Retrying...")
+					select {
+					case <-this.done:
+						return errShutdown
+					case <-time.After(resendDelay):
+					}
+					continue
+				}
 				select {
-				case <-this.done:
-					return errShutdown
+				case confirm := <-this.notifyConfirm:
+					if confirm.Ack {
+						this.Debug("Push confirmed!")
+						break LOOP1
+					}
 				case <-time.After(resendDelay):
 				}
-				continue
+				this.Debug("Push didn't confirm. Retrying...")
 			}
+		}
+	*/
+	return nil
+}
+
+func (this *Session) PushByIdx(idx int, data []byte) error {
+	if len(this.queuenames) <= idx {
+		return errQueueNotDefined
+	}
+	queuename := this.queuenames[idx]
+LOOP2:
+	for {
+		err := this.UnsafePush(data, queuename)
+		if err != nil {
+			this.Debug("Push failed. Retrying...")
 			select {
-			case confirm := <-this.notifyConfirm:
-				if confirm.Ack {
-					this.Debug("Push confirmed!")
-					break LOOP1
-				}
+			case <-this.done:
+				return errShutdown
 			case <-time.After(resendDelay):
 			}
-			this.Debug("Push didn't confirm. Retrying...")
+			continue
 		}
+		select {
+		case confirm := <-this.notifyConfirm:
+			if confirm.Ack {
+				this.Debug("Push confirmed!")
+				break LOOP2
+			}
+		case <-time.After(resendDelay):
+		}
+		this.Debug("Push didn't confirm. Retrying...")
 	}
 	return nil
 }

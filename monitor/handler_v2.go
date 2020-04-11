@@ -4,7 +4,7 @@ import (
 	"fmt"
 	cobraErrors "github.com/always-waiting/cobra-canal/errors"
 	"github.com/always-waiting/cobra-canal/event"
-	"github.com/always-waiting/cobra-canal/filter"
+	"github.com/always-waiting/cobra-canal/rules/filter"
 	"github.com/siddontang/go-log/log"
 	"sync"
 
@@ -136,7 +136,8 @@ func (this *HandlerV2) Flush() {
 						this.errHr.Push(err)
 					}
 				} else {
-					this.Log.Infof("%s跳过事件: %s", f.Name(), e)
+					name, _ := f.Name()
+					this.Log.Infof("%s跳过事件: %s", name, e)
 				}
 			}(fil, e)
 		}

@@ -27,10 +27,10 @@ func TestLoadConfigV2_Rule_00(t *testing.T) {
 				LogCfg: LogConfig{Type: "file", Level: "debug", Dirname: "/export/Logs/cobra"},
 				DbCfg:  &MysqlConfig{Addr: "addr", User: "user", Passwd: "passwd", Db: "db"},
 				ErrCfg: errors.ErrHandlerConfig(map[string]string{"type": "fake"}),
-				FilterManage: FilterManageConfig{
+				FilterManage: ManageConfig{
 					Name: "filtername", Desc: "说明", Percent: 50, DbRequired: true,
 					TableFilterCfg: &TableFilterConfig{DbName: "db_cmdb", Include: []string{"t_device_basic", "t_device_config"}},
-					Worker:         WorkerConfig(map[string]interface{}{"filter_type": "base"}),
+					Worker:         WorkerConfig(map[string]interface{}{"filter_type": "base", "max": int64(10)}),
 					AggreCfg: &collection.AggreConfig{
 						Time: 10,
 						IdxRulesCfg: []collection.IdxRuleConfig{
@@ -38,14 +38,14 @@ func TestLoadConfigV2_Rule_00(t *testing.T) {
 						},
 					},
 				},
-				TransferManage: TransferManageConfig{
+				TransferManage: ManageConfig{
 					Name: "transfername", Desc: "说明", Percent: 50, DbRequired: true,
 					Workers: []WorkerConfig{
 						map[string]interface{}{"transfer_type": "base"},
 						map[string]interface{}{"transfer_type": "base"},
 					},
 				},
-				ConsumeManage: ConsumeManageConfig{
+				ConsumeManage: ManageConfig{
 					Name: "consumename", Desc: "说明", Percent: 50,
 					Workers: []WorkerConfig{WorkerConfig(map[string]interface{}{"consume_type": "base"})},
 				},

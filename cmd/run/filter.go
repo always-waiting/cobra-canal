@@ -3,7 +3,7 @@ package run
 import (
 	"github.com/always-waiting/cobra-canal/config"
 
-	"github.com/always-waiting/cobra-canal/filter"
+	"github.com/always-waiting/cobra-canal/rules/filter"
 	"github.com/spf13/cobra"
 
 	"sync"

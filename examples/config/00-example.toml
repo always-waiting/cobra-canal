@@ -55,8 +55,6 @@ exclude_field = ["action_id"]
 [rules.filtermanage.worker] # 过滤工人配置
 filter_type = "base" # 加载用户自定义的过滤
 max = 10
-min = 1
-
 [rules.transfermanage] # 转换经理配置
 name = "transfername"
 desc = "说明"
