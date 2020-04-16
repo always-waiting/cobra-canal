@@ -17,15 +17,12 @@ func testMonitor_Cfg00_1(t *testing.T) {
 	if err != nil {
 		t.Errorf("生成cobra对象出错: %s", err)
 	}
-	exitFlag := make(chan bool, 0)
 	go func() {
 		cobra.Run()
-		exitFlag <- true
 
 	}()
 	if _, err := cobra.SavePosition(); err != nil {
 		t.Errorf("SavePosition出错: %s", err)
 	}
 	cobra.Close()
-	<-exitFlag
 }

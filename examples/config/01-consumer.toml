@@ -1,0 +1,31 @@
+[[rules]]# 处理工厂
+id = 1 # 工厂标识符
+desc = "工厂简单描述"
+queue_addr = "amqp://guest:guest@localhost:5672/cobra" # 队列地址
+[rules.log]
+type="file"
+level = "debug"
+dirname = "/export/Logs/cobra"
+[rules.db] # 主库链接配置
+user = "user"
+password = "passwd"
+db = "db"
+addr = "addr"
+[rules.err]
+type = "fake" # 错误处理类型
+
+[rules.transfermanage] # 转换经理配置
+name = "transfername"
+desc = "说明"
+db_required = true
+[[rules.transfermanage.workers]] # 转换工人配置
+transfer_type = "base"
+[[rules.transfermanage.workers]] # 转换工人配置
+transfer_type = "base"
+
+[rules.consumemanage] # 消费经理配置
+name = "consumename"
+desc = "说明"
+port = 8888
+[[rules.consumemanage.workers]] # 消费工人配置
+consume_type = "base"

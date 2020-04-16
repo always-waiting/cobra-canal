@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package monitor;
+
+service Monitor {
+    rpc BaseReport(MonitorRequest) returns (BaseInfo) {}
+}
+
+message MonitorRequest {
+    string name = 1;
+}
+
+message Status {
+    int32 code = 1;
+    string message = 2;
+}
+
+message BaseInfo {
+    message Data {
+        string slave = 1;
+        uint32 port = 2;
+        uint64 server_id = 3;
+        repeated string includeTableRegex = 4;
+        repeated string excludeTableRegex = 5;
+    }
+    Data data = 1;
+    Status status = 2;
+}

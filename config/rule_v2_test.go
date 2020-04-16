@@ -28,7 +28,7 @@ func TestLoadConfigV2_Rule_00(t *testing.T) {
 				DbCfg:  &MysqlConfig{Addr: "addr", User: "user", Passwd: "passwd", Db: "db"},
 				ErrCfg: errors.ErrHandlerConfig(map[string]string{"type": "fake"}),
 				FilterManage: ManageConfig{
-					Name: "filtername", Desc: "说明", Percent: 50, DbRequired: true,
+					Name: "filtername", Desc: "说明", Port: 6666, DbRequired: true,
 					TableFilterCfg: &TableFilterConfig{DbName: "db_cmdb", Include: []string{"t_device_basic", "t_device_config"}},
 					Worker:         WorkerConfig(map[string]interface{}{"filter_type": "base", "max": int64(10)}),
 					AggreCfg: &collection.AggreConfig{
@@ -39,14 +39,14 @@ func TestLoadConfigV2_Rule_00(t *testing.T) {
 					},
 				},
 				TransferManage: ManageConfig{
-					Name: "transfername", Desc: "说明", Percent: 50, DbRequired: true,
+					Name: "transfername", Desc: "说明", Port: 7777, DbRequired: true,
 					Workers: []WorkerConfig{
 						map[string]interface{}{"transfer_type": "base"},
 						map[string]interface{}{"transfer_type": "base"},
 					},
 				},
 				ConsumeManage: ManageConfig{
-					Name: "consumename", Desc: "说明", Percent: 50,
+					Name: "consumename", Desc: "说明", Port: 8888,
 					Workers: []WorkerConfig{WorkerConfig(map[string]interface{}{"consume_type": "base"})},
 				},
 			},

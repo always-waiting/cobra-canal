@@ -71,21 +71,6 @@ type EventV2 struct {
 	Action  string
 	Err     error
 	DDLSql  string
-	pass    chan bool
-}
-
-func (this *EventV2) CreatePass() {
-	this.pass = make(chan bool, 0)
-}
-
-func (this *EventV2) SetPass(flag bool) {
-	this.pass <- flag
-}
-
-func (this *EventV2) Pass() bool {
-	ret := <-this.pass
-	this.pass = nil
-	return ret
 }
 
 func (this EventV2) String() string {

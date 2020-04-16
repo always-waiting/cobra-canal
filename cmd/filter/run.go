@@ -1,6 +1,11 @@
-package run
+package filter
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/always-waiting/cobra-canal/config"
 
 	"github.com/always-waiting/cobra-canal/rules/filter"
@@ -9,14 +14,14 @@ import (
 	"sync"
 )
 
-var filterCmd = &cobra.Command{
-	Use:     "filter",
+var runCmd = &cobra.Command{
+	Use:     "run",
 	Short:   "启动过滤流程",
 	Version: "2.0.0",
-	Run:     filterCmdRun,
+	Run:     runCmdRun,
 }
 
-func filterCmdRun(cmd *cobra.Command, args []string) {
+func runCmdRun(cmd *cobra.Command, args []string) {
 	cfgFile, _ := cmd.Flags().GetString("cfg")
 	config.LoadV2(cfgFile)
 	cfg := config.ConfigV2()
@@ -29,6 +34,25 @@ func filterCmdRun(cmd *cobra.Command, args []string) {
 		}
 		managers = append(managers, manager)
 	}
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+	LOOP1:
+		for {
+			select {
+			case signalGet := <-sigs:
+				switch signalGet {
+				case syscall.SIGINT, syscall.SIGTERM:
+					break LOOP1
+				default:
+					fmt.Println(signalGet)
+				}
+			}
+		}
+		for _, manager := range managers {
+			go manager.Close()
+		}
+	}()
 	wg := sync.WaitGroup{}
 	for _, manager := range managers {
 		wg.Add(1)

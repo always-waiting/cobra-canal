@@ -10,6 +10,8 @@ import (
 	"github.com/siddontang/go-log/log"
 	"github.com/siddontang/go-mysql/canal"
 	cmysql "github.com/siddontang/go-mysql/mysql"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 	"net"
 )
 
@@ -19,6 +21,7 @@ var (
 
 func MakeMonitor() (c *Monitor, err error) {
 	c = &Monitor{}
+	c.exitFlag = make(chan struct{})
 	c.cfg = config.ConfigV2()
 	if err = c.SetLog(); err != nil {
 		return
@@ -38,7 +41,7 @@ func MakeMonitor() (c *Monitor, err error) {
 	if err = c.SetHandler(); err != nil {
 		return
 	}
-	if err = c.SetHttp(); err != nil {
+	if err = c.SetRpc(); err != nil {
 		return
 	}
 	return
@@ -46,13 +49,14 @@ func MakeMonitor() (c *Monitor, err error) {
 
 type Monitor struct {
 	Canal           *canal.Canal              `description:"从库对象"`
-	Http            *MonitorHttpV2            `description:"交互http服务"`
+	Rpc             *grpc.Server              `description:"交互Rpc服务"`
 	Handler         *HandlerV2                `description:"处理事件的对象"`
 	ErrHr           *cobraErrors.ErrHandlerV2 `description:"错误处理对象"`
 	Log             *log.Logger               `description:"日志"`
 	CobraDb         *gorm.DB                  `description:"眼镜蛇数据库"`
 	startMonitorPos *cmysql.Position
 	cfg             *config.ConfigureV2
+	exitFlag        chan struct{}
 }
 
 func (this *Monitor) Cfg() *config.ConfigureV2 {
@@ -85,15 +89,31 @@ func (this *Monitor) SetHandler() (err error) {
 	return
 }
 
-func (this *Monitor) SetHttp() (err error) {
+func (this *Monitor) SetRpc() (err error) {
 	defer func() {
 		if err == nil && this.Log != nil {
-			this.Log.Debug("SetHttp: 成功")
+			this.Log.Debug("SetRpc: 成功")
 		}
 	}()
 	defer this.Recover(&err)
-	this.Log.Debug("SetHttp: 初始化Master Http...")
+	s := grpc.NewServer()
+	RegisterMonitorServer(s, &MonitorRPC{Obj: this})
+	reflection.Register(s)
+	this.Rpc = s
+	this.Log.Debug("SetRpc: 初始化Master Http...")
 	return
+}
+
+func (this *Monitor) StartRPC() error {
+	port := fmt.Sprintf(":%d", this.cfg.CobraCfg.GetPort())
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		return err
+	}
+	if err := this.Rpc.Serve(lis); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (this *Monitor) SetErrHr() (err error) {
@@ -256,8 +276,12 @@ func (this *Monitor) getRunningIp() (ip string, err error) {
 }
 
 func (this *Monitor) Run() {
+	defer func() {
+		this.exitFlag <- struct{}{}
+	}()
 	go this.ErrHr.Send()
 	defer this.ErrHr.Close()
+	go this.StartRPC()
 	err := this.Canal.RunFrom(*this.startMonitorPos)
 	if err != nil {
 		this.ErrHr.Push(err)
@@ -273,4 +297,6 @@ func (this *Monitor) Run() {
 
 func (this *Monitor) Close() {
 	this.Canal.Close()
+	this.Rpc.Stop()
+	<-this.exitFlag
 }

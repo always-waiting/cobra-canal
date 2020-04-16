@@ -18,8 +18,6 @@ type RuleConfigV2 struct {
 	FilterManage   ManageConfig            `toml:"filtermanage"`
 	TransferManage ManageConfig            `toml:"transfermanage"`
 	ConsumeManage  ManageConfig            `toml:"consumemanage"`
-	Port           int                     `toml:"port"`
-	Host           string                  `toml:"host"`
 	Compress       bool                    `toml:"compress"`
 }
 
@@ -71,7 +69,7 @@ func (this RuleConfigV2) ErrHandler() errors.ErrHandlerV2 {
 type ManageConfig struct {
 	Name           string                  `toml:"name"`
 	Desc           string                  `toml:"desc"`
-	Percent        int                     `toml:"percent"`
+	Port           int                     `toml:"port"`
 	DbRequired     bool                    `toml:"db_required"`
 	Worker         WorkerConfig            `toml:"worker"`
 	TableFilterCfg *TableFilterConfig      `toml:"tablefilter"`

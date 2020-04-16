@@ -32,3 +32,10 @@ func (this *CobraConfig) GetBuffer() int {
 	}
 	return this.Buffer
 }
+
+func (this *CobraConfig) GetPort() int {
+	if this.Port == 0 {
+		this.Port = 6666
+	}
+	return this.Port
+}
