@@ -15,6 +15,15 @@ var (
 	errInputType = errors.New("输入参数不是*event.EventV2类型")
 )
 
+func AddAction(name string, f func(*event.EventV2) (bool, error)) {
+	if acts, ok := workerTypeMap[name]; !ok {
+		workerTypeMap[name] = []rules.Action{FilterRuler(f)}
+	} else {
+		acts = append(acts, FilterRuler(f))
+		workerTypeMap[name] = acts
+	}
+}
+
 type FilterRuler func(*event.EventV2) (bool, error)
 
 func (this FilterRuler) Run(i interface{}) (interface{}, error) {

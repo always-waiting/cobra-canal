@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+var DefaultLogCfg = &LogConfig{Level: "debug"}
+
 func MakeFakeLogger() *log.Logger {
 	h, _ := log.NewStreamHandler(os.Stdout)
 	logger := log.NewDefault(h)

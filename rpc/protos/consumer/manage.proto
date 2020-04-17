@@ -1,0 +1,10 @@
+syntax = "proto3";
+option go_package = "github.com/always-waiting/cobra-canal/rpc/pb/consumer";
+
+package consumer;
+
+import "base.proto";
+
+service Manage {
+    rpc GetCfg(base.Request) returns (base.RespConfig){}
+}

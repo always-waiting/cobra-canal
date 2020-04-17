@@ -13,5 +13,5 @@ var RootCmd = &cobra.Command{
 func init() {
 	RootCmd.PersistentFlags().String("cfg", "", "配置文件")
 	RootCmd.AddCommand(runCmd)
-	RootCmd.AddCommand(baseReportCmd)
+	RootCmd.AddCommand(getCfgCmd)
 }

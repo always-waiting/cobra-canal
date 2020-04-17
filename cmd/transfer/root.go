@@ -12,5 +12,7 @@ var RootCmd = &cobra.Command{
 
 func init() {
 	RootCmd.PersistentFlags().String("cfg", "", "配置文件")
+	RootCmd.PersistentFlags().Int64("id", 0, "过滤组建id")
 	RootCmd.AddCommand(runCmd)
+	RootCmd.AddCommand(getCfgCmd)
 }

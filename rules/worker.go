@@ -38,6 +38,10 @@ func (this *Worker) Release() {
 	this.pool.Release()
 }
 
+func (this *Worker) TypeName() string {
+	return this.WCfg.TypeName()
+}
+
 func (this *Worker) ParseWorker(definedTypeMap map[string][]Action) (err error) {
 	if acts, ok := definedTypeMap[this.WCfg.TypeName()]; !ok {
 		err = errWorkerTypeNotDefined

@@ -4,20 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/always-waiting/cobra-canal/monitor"
+	"github.com/always-waiting/cobra-canal/rpc/pb"
+	"github.com/always-waiting/cobra-canal/rpc/pb/monitor"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"time"
 )
 
-var baseReportCmd = &cobra.Command{
-	Use:     "basereport",
+var getCfgCmd = &cobra.Command{
+	Use:     "config",
 	Short:   "监控组建基本信息",
 	Version: "2.0.0",
-	Run:     baseReportCmdRun,
+	Run:     getCfgCmdRun,
 }
 
-func baseReportCmdRun(cmd *cobra.Command, args []string) {
+func getCfgCmdRun(cmd *cobra.Command, args []string) {
 	host, _ := cmd.Flags().GetString("host")
 	port, _ := cmd.Flags().GetString("port")
 	address := fmt.Sprintf("%s:%s", host, port)
@@ -26,19 +27,25 @@ func baseReportCmdRun(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 	defer conn.Close()
-	c := monitor.NewMonitorClient(conn)
+	c := monitor.NewManageClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	r, err := c.BaseReport(ctx, &monitor.MonitorRequest{})
+	r, err := c.GetCfg(ctx, &pb.Request{})
 	if err != nil {
 		panic(err)
 	}
+	cfg := make(map[string]interface{})
+	json.Unmarshal(r.Config, &cfg)
+	report := struct {
+		Status *pb.Status             `json:"status"`
+		Config map[string]interface{} `json:"config"`
+	}{Status: r.Status, Config: cfg}
 	pretty, _ := cmd.Flags().GetBool("pretty")
 	var pjson []byte
 	if pretty {
-		pjson, _ = json.MarshalIndent(r, "", "\t")
+		pjson, _ = json.MarshalIndent(report, "", "\t")
 	} else {
-		pjson, _ = json.Marshal(r)
+		pjson, _ = json.Marshal(report)
 	}
 	fmt.Println(string(pjson))
 }

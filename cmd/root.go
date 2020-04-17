@@ -4,6 +4,7 @@ import (
 	"github.com/always-waiting/cobra-canal/cmd/consumer"
 	"github.com/always-waiting/cobra-canal/cmd/filter"
 	"github.com/always-waiting/cobra-canal/cmd/monitor"
+	"github.com/always-waiting/cobra-canal/cmd/pipeline"
 	"github.com/always-waiting/cobra-canal/cmd/transfer"
 	"github.com/spf13/cobra"
 )
@@ -29,6 +30,7 @@ func init() {
 	rootCmd.AddCommand(filter.RootCmd)
 	rootCmd.AddCommand(transfer.RootCmd)
 	rootCmd.AddCommand(consumer.RootCmd)
+	rootCmd.AddCommand(pipeline.RootCmd)
 }
 
 const (

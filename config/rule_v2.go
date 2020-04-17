@@ -8,17 +8,21 @@ import (
 	"github.com/siddontang/go-log/log"
 )
 
+var (
+	ErrManageCfgEmpty = errors.New("manage属性没有定义")
+)
+
 type RuleConfigV2 struct {
-	Id             int                     `toml:"id"`
-	Desc           string                  `toml:"desc"`
-	QueueAddr      string                  `toml:"queue_addr"`
-	LogCfg         LogConfig               `toml:"log"`
-	DbCfg          *MysqlConfig            `toml:"db"`
-	ErrCfg         errors.ErrHandlerConfig `toml:"err"`
-	FilterManage   ManageConfig            `toml:"filtermanage"`
-	TransferManage ManageConfig            `toml:"transfermanage"`
-	ConsumeManage  ManageConfig            `toml:"consumemanage"`
-	Compress       bool                    `toml:"compress"`
+	Id             int                      `toml:"id"`
+	Desc           string                   `toml:"desc"`
+	QueueAddr      string                   `toml:"queue_addr"`
+	LogCfg         *LogConfig               `toml:"log" json:",omitempty"`
+	DbCfg          *MysqlConfig             `toml:"db" json:",omitempty"`
+	ErrCfg         *errors.ErrHandlerConfig `toml:"err" json:",omitempty"`
+	FilterManage   *ManageConfig            `toml:"filtermanage" json:",omitempty"`
+	TransferManage *ManageConfig            `toml:"transfermanage" json:",omitempty"`
+	ConsumeManage  *ManageConfig            `toml:"consumemanage" json:",omitempty"`
+	Compress       bool                     `toml:"compress"`
 }
 
 func (this RuleConfigV2) IsAggreable() bool {
@@ -63,18 +67,20 @@ func (this RuleConfigV2) TableFilter() *TableFilterConfig {
 }
 
 func (this RuleConfigV2) ErrHandler() errors.ErrHandlerV2 {
-	return this.ErrCfg.MakeHandler()
+	if this.ErrCfg != nil {
+		return this.ErrCfg.MakeHandler()
+	}
+	return errors.DefaultErr.MakeHandler()
 }
 
 type ManageConfig struct {
 	Name           string                  `toml:"name"`
 	Desc           string                  `toml:"desc"`
-	Port           int                     `toml:"port"`
 	DbRequired     bool                    `toml:"db_required"`
-	Worker         WorkerConfig            `toml:"worker"`
-	TableFilterCfg *TableFilterConfig      `toml:"tablefilter"`
-	AggreCfg       *collection.AggreConfig `toml:"aggregation"`
-	Workers        []WorkerConfig          `toml:"workers"`
+	Worker         *WorkerConfig           `toml:"worker" json:",omitempty"`
+	TableFilterCfg *TableFilterConfig      `toml:"tablefilter" json:",omitempty"`
+	AggreCfg       *collection.AggreConfig `toml:"aggregation" json:",omitempty"`
+	Workers        []WorkerConfig          `toml:"workers" json:",omitempty"`
 }
 
 func (this *ManageConfig) HasTableFilter() bool {
@@ -138,14 +144,23 @@ func (this WorkerType) WorkersName(cfg RuleConfigV2) (ret []string, err error) {
 	ret = make([]string, 0)
 	switch this {
 	case FilterWorker:
+		if cfg.FilterManage == nil {
+			return nil, ErrManageCfgEmpty
+		}
 		name := fmt.Sprintf("filter_%d_%s_%s", cfg.Id, cfg.FilterManage.Name, cfg.FilterManage.Worker.TypeName())
 		ret = append(ret, name)
 	case TransferWorker:
+		if cfg.TransferManage == nil {
+			return nil, ErrManageCfgEmpty
+		}
 		for idx, transfer := range cfg.TransferManage.Workers {
 			queueName := fmt.Sprintf("transfer_%d_%s_%d-%s", cfg.Id, cfg.TransferManage.Name, idx, transfer.TypeName())
 			ret = append(ret, queueName)
 		}
 	case ConsumeWorker:
+		if cfg.ConsumeManage == nil {
+			return nil, ErrManageCfgEmpty
+		}
 		for idx, consume := range cfg.ConsumeManage.Workers {
 			name := fmt.Sprintf("consume_%d_%s_%d-%s", cfg.Id, cfg.ConsumeManage.Name, idx, consume.TypeName())
 			ret = append(ret, name)
@@ -193,7 +208,7 @@ func (this WorkerType) WorkerName(cfg RuleConfigV2, idx int) (ret string, err er
 func (this WorkerType) Worker(cfg RuleConfigV2, idx int) (ret WorkerConfig, err error) {
 	switch this {
 	case FilterWorker:
-		ret = cfg.FilterManage.Worker
+		ret = *cfg.FilterManage.Worker
 	case TransferWorker:
 		workers := cfg.TransferManage.Workers
 		if idx >= len(workers) {
@@ -227,7 +242,7 @@ func (this WorkerType) Worker(cfg RuleConfigV2, idx int) (ret WorkerConfig, err 
 func (this WorkerType) Workers(cfg RuleConfigV2) (ret []WorkerConfig, err error) {
 	switch this {
 	case FilterWorker:
-		ret = []WorkerConfig{cfg.FilterManage.Worker}
+		ret = []WorkerConfig{*cfg.FilterManage.Worker}
 	case TransferWorker:
 		ret = cfg.TransferManage.Workers
 	case ConsumeWorker:
@@ -239,7 +254,12 @@ func (this WorkerType) Workers(cfg RuleConfigV2) (ret []WorkerConfig, err error)
 }
 
 func (this WorkerType) GetLogger(cfg RuleConfigV2) (ret *log.Logger, err error) {
-	log := cfg.LogCfg
+	var log *LogConfig
+	if cfg.LogCfg != nil {
+		log = cfg.LogCfg
+	} else {
+		log = DefaultLogCfg
+	}
 	var name string
 	switch this {
 	case FilterWorker:

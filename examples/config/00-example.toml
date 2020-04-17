@@ -1,7 +1,6 @@
 [cobra]
 rebase = true
 buffer = 1000
-port = 5555
 [cobra.config]# 监控binlog
 addr = "localhost:3306" # 监控的主库
 user = "root"

@@ -3,6 +3,8 @@ package filter
 import (
 	"fmt"
 	"github.com/always-waiting/cobra-canal/config"
+	pb "github.com/always-waiting/cobra-canal/rpc/pb/filter"
+	servers "github.com/always-waiting/cobra-canal/rpc/servers/filter"
 	"github.com/always-waiting/cobra-canal/rules/filter"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -33,7 +35,7 @@ func runCmdRun(cmd *cobra.Command, args []string) {
 	rulesCfg := cfg.RulesCfg
 	managers := make([]*filter.Manager, 0)
 	rpc := grpc.NewServer()
-	sr := &filter.ManagerRPC{Obj: make(map[int64]*filter.Manager)}
+	sr := &servers.ManagerRPC{Obj: make(map[int64]*filter.Manager)}
 	for _, ruleCfg := range rulesCfg {
 		manager, err := filter.CreateManagerWithNext(ruleCfg)
 		if err != nil {
@@ -43,7 +45,7 @@ func runCmdRun(cmd *cobra.Command, args []string) {
 		sr.Obj[id] = manager
 		managers = append(managers, manager)
 	}
-	filter.RegisterFilterServer(rpc, sr)
+	pb.RegisterManageServer(rpc, sr)
 	reflection.Register(rpc)
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)

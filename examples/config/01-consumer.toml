@@ -26,6 +26,5 @@ transfer_type = "base"
 [rules.consumemanage] # 消费经理配置
 name = "consumename"
 desc = "说明"
-port = 8888
 [[rules.consumemanage.workers]] # 消费工人配置
 consume_type = "base"

@@ -2,6 +2,8 @@ package errors
 
 import "encoding/json"
 
+var DefaultErr = ErrHandlerConfig(map[string]string{"type": "fake"})
+
 type ErrHandlerConfig map[string]string
 
 func (this ErrHandlerConfig) MakeHandler() ErrHandlerV2 {

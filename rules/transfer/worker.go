@@ -16,6 +16,15 @@ var (
 	errOutOfIndex = errors.New("下标越界")
 )
 
+func AddAction(name string, f func([]event.EventV2) (interface{}, error)) {
+	if acts, ok := workerTypeMap[name]; !ok {
+		workerTypeMap[name] = []rules.Action{TransferRuler(f)}
+	} else {
+		acts = append(acts, TransferRuler(f))
+		workerTypeMap[name] = acts
+	}
+}
+
 type TransferRuler func([]event.EventV2) (interface{}, error)
 
 func (this TransferRuler) Run(i interface{}) (interface{}, error) {

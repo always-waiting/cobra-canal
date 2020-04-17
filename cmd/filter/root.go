@@ -15,5 +15,5 @@ func init() {
 	RootCmd.PersistentFlags().String("name", "", "过滤组件名称")
 	RootCmd.PersistentFlags().Int64("id", 0, "过滤组建id")
 	RootCmd.AddCommand(runCmd)
-	RootCmd.AddCommand(baseReportCmd)
+	RootCmd.AddCommand(getCfgCmd)
 }

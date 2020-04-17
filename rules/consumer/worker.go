@@ -1,4 +1,4 @@
-package consume
+package consumer
 
 import (
 	"github.com/always-waiting/cobra-canal/config"
@@ -14,6 +14,15 @@ var (
 	errInputType  = errors.New("输入参数不是[]event.EventV2类型")
 	errOutOfIndex = errors.New("下标越界")
 )
+
+func AddAction(name string, f func([]byte) error) {
+	if acts, ok := workerTypeMap[name]; !ok {
+		workerTypeMap[name] = []rules.Action{ConsumeRuler(f)}
+	} else {
+		acts = append(acts, ConsumeRuler(f))
+		workerTypeMap[name] = acts
+	}
+}
 
 type ConsumeRuler func([]byte) error
 

@@ -24,11 +24,12 @@ func TestLoadConfigV2_00(t *testing.T) {
 		}
 	}
 	{
+		errCfg := errors.ErrHandlerConfig(map[string]string{"type": "fake"})
 		cobraCfg := &CobraConfig{
 			Config: &canal.Config{Addr: "localhost:3306", User: "root", Password: "abc123", ServerID: 90000000, IncludeTableRegex: []string{"db_cmdb\\..*", "db_cmdb_cobra\\.*"}},
 			DbCfg:  &MysqlConfig{Addr: "localhost:3306", User: "root", Passwd: "abc123", Db: "db_cmdb_cobra"},
-			LogCfg: LogConfig{Type: "file", Level: "debug", Dirname: "/export/Logs/cobra/"},
-			ErrCfg: errors.ErrHandlerConfig(map[string]string{"type": "fake"}),
+			LogCfg: &LogConfig{Type: "file", Level: "debug", Dirname: "/export/Logs/cobra/"},
+			ErrCfg: &errCfg,
 			Rebase: true, Buffer: 1000,
 		}
 		if !reflect.DeepEqual(cobraCfg, cfg.CobraCfg) {

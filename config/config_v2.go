@@ -6,8 +6,8 @@ import (
 )
 
 type ConfigureV2 struct {
-	CobraCfg *CobraConfig   `toml:"cobra" description:"监控从库的配置"`
-	RulesCfg []RuleConfigV2 `toml:"rules" description:"监控规则工厂的配置"`
+	CobraCfg *CobraConfig   `toml:"cobra" description:"监控从库的配置" json:",omitempty"`
+	RulesCfg []RuleConfigV2 `toml:"rules" description:"监控规则工厂的配置" json:",omitempty"`
 	path     string
 }
 
@@ -17,13 +17,19 @@ func (this *ConfigureV2) String() string {
 
 type CobraConfig struct {
 	*canal.Config
-	DbCfg  *MysqlConfig            `toml:"db" description:"监控信息记录库"`
-	LogCfg LogConfig               `toml:"log" description:"日志配置"`
-	ErrCfg errors.ErrHandlerConfig `toml:"err" description:"错误处理配置"`
-	Rebase bool                    `toml:"rebase"`
-	Port   int                     `toml:"port"`
-	Host   string                  `toml:"host"`
-	Buffer int                     `toml:"buffer"`
+	DbCfg  *MysqlConfig             `toml:"db" description:"监控信息记录库" json:",omitempty"`
+	LogCfg *LogConfig               `toml:"log" description:"日志配置" json:",omitempty"`
+	ErrCfg *errors.ErrHandlerConfig `toml:"err" description:"错误处理配置" json:",omitempty"`
+	Rebase bool                     `toml:"rebase"`
+	Host   string                   `toml:"host"`
+	Buffer int                      `toml:"buffer"`
+}
+
+func (this *CobraConfig) GetLogCfg() *LogConfig {
+	if this.LogCfg != nil {
+		return this.LogCfg
+	}
+	return DefaultLogCfg
 }
 
 func (this *CobraConfig) GetBuffer() int {
@@ -31,11 +37,4 @@ func (this *CobraConfig) GetBuffer() int {
 		this.Buffer = 500
 	}
 	return this.Buffer
-}
-
-func (this *CobraConfig) GetPort() int {
-	if this.Port == 0 {
-		this.Port = 6666
-	}
-	return this.Port
 }

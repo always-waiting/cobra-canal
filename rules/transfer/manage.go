@@ -41,6 +41,10 @@ func (this *Manager) SetWorker() (err error) {
 	return
 }
 
+func (this *Manager) Workers() []*Worker {
+	return this.workers
+}
+
 func (this *Manager) Start() error {
 	go this.ErrSend()
 	return this.Receive()

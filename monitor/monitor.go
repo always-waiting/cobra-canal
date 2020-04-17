@@ -10,8 +10,6 @@ import (
 	"github.com/siddontang/go-log/log"
 	"github.com/siddontang/go-mysql/canal"
 	cmysql "github.com/siddontang/go-mysql/mysql"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 	"net"
 )
 
@@ -41,15 +39,11 @@ func MakeMonitor() (c *Monitor, err error) {
 	if err = c.SetHandler(); err != nil {
 		return
 	}
-	if err = c.SetRpc(); err != nil {
-		return
-	}
 	return
 }
 
 type Monitor struct {
 	Canal           *canal.Canal              `description:"从库对象"`
-	Rpc             *grpc.Server              `description:"交互Rpc服务"`
 	Handler         *HandlerV2                `description:"处理事件的对象"`
 	ErrHr           *cobraErrors.ErrHandlerV2 `description:"错误处理对象"`
 	Log             *log.Logger               `description:"日志"`
@@ -68,8 +62,12 @@ func (this *Monitor) RulesCfg() []config.RuleConfigV2 {
 }
 
 func (this *Monitor) SetLog() (err error) {
-	this.cfg.CobraCfg.LogCfg.SetFilename("cobra.log")
-	this.Log, err = this.cfg.CobraCfg.LogCfg.GetLogger()
+	if this.cfg.CobraCfg.LogCfg == nil {
+		this.Log, err = config.DefaultLogCfg.GetLogger()
+	} else {
+		this.cfg.CobraCfg.LogCfg.SetFilename("cobra.log")
+		this.Log, err = this.cfg.CobraCfg.LogCfg.GetLogger()
+	}
 	return
 }
 
@@ -89,33 +87,6 @@ func (this *Monitor) SetHandler() (err error) {
 	return
 }
 
-func (this *Monitor) SetRpc() (err error) {
-	defer func() {
-		if err == nil && this.Log != nil {
-			this.Log.Debug("SetRpc: 成功")
-		}
-	}()
-	defer this.Recover(&err)
-	s := grpc.NewServer()
-	RegisterMonitorServer(s, &MonitorRPC{Obj: this})
-	reflection.Register(s)
-	this.Rpc = s
-	this.Log.Debug("SetRpc: 初始化Master Http...")
-	return
-}
-
-func (this *Monitor) StartRPC() error {
-	port := fmt.Sprintf(":%d", this.cfg.CobraCfg.GetPort())
-	lis, err := net.Listen("tcp", port)
-	if err != nil {
-		return err
-	}
-	if err := this.Rpc.Serve(lis); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (this *Monitor) SetErrHr() (err error) {
 	cfg := this.cfg.CobraCfg
 	defer func() {
@@ -125,7 +96,12 @@ func (this *Monitor) SetErrHr() (err error) {
 	}()
 	defer this.Recover(&err)
 	this.Log.Debug("SetErrHr: 初始化错误处理器...")
-	eHr := cfg.ErrCfg.MakeHandler()
+	var eHr cobraErrors.ErrHandlerV2
+	if cfg.ErrCfg == nil {
+		eHr = cobraErrors.DefaultErr.MakeHandler()
+	} else {
+		eHr = cfg.ErrCfg.MakeHandler()
+	}
 	this.ErrHr = &eHr
 	return
 }
@@ -281,7 +257,6 @@ func (this *Monitor) Run() {
 	}()
 	go this.ErrHr.Send()
 	defer this.ErrHr.Close()
-	go this.StartRPC()
 	err := this.Canal.RunFrom(*this.startMonitorPos)
 	if err != nil {
 		this.ErrHr.Push(err)
@@ -297,6 +272,5 @@ func (this *Monitor) Run() {
 
 func (this *Monitor) Close() {
 	this.Canal.Close()
-	this.Rpc.Stop()
 	<-this.exitFlag
 }
