@@ -101,6 +101,10 @@ func (this *Manager) SetSession() (*rabbitmq.Session, error) {
 	return sess, err
 }
 
+func (this *Manager) Id() (int64, error) {
+	return int64(this.Cfg.Id), nil
+}
+
 func (this *Manager) Name() (string, error) {
 	return this.Cfg.ManagerName(this.workType)
 }

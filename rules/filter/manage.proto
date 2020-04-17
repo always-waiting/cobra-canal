@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package filter;
+
+service Filter {
+    rpc BaseReport(FilterRequest) returns (BaseInfo){}
+}
+
+message FilterRequest {
+    string name = 1;
+    int64 id = 2;
+}
+
+message Status {
+    int32 code = 1;
+    string message = 2;
+}
+
+message BaseInfo {
+    message TableFilter {
+        string db = 1;
+        repeated string include_table = 2;
+    }
+    message Data {
+        string name = 1;
+        bool aggreable = 2;
+        TableFilter filter = 3;
+    }
+    Status status = 1;
+    Data data = 2;
+}
