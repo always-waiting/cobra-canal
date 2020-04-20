@@ -8,20 +8,23 @@ import (
 )
 
 var (
-	workerTypeMap = map[string][]rules.Action{
-		"base": []rules.Action{},
+	workerModify = map[string]func(*Worker) error{
+		"base": func(w *Worker) error {
+			w.AddAction(func(input []byte) error {
+				w.manager.Log.Debugf("消费器%d: 默认消费模式: %s", w.Id, string(input))
+				return nil
+			})
+			return nil
+		},
 	}
-	errInputType  = errors.New("输入参数不是[]event.EventV2类型")
-	errOutOfIndex = errors.New("下标越界")
+	errInputType            = errors.New("输入参数不是[]event.EventV2类型")
+	errOutOfIndex           = errors.New("下标越界")
+	errWorkerTypeNotDefined = errors.New("未定义的consumer类型")
+	errDBNotDefined         = errors.New("没定义主库链接")
 )
 
-func AddAction(name string, f func([]byte) error) {
-	if acts, ok := workerTypeMap[name]; !ok {
-		workerTypeMap[name] = []rules.Action{ConsumeRuler(f)}
-	} else {
-		acts = append(acts, ConsumeRuler(f))
-		workerTypeMap[name] = acts
-	}
+func RegisterWorkerModify(name string, f func(*Worker) error) {
+	workerModify[name] = f
 }
 
 type ConsumeRuler func([]byte) error
@@ -35,15 +38,6 @@ func (this ConsumeRuler) Run(i interface{}) (interface{}, error) {
 	return nil, err
 }
 
-func AddConsumeRuler(name string, f ConsumeRuler) {
-	if acts, ok := workerTypeMap[name]; ok {
-		acts = append(acts, f)
-		workerTypeMap[name] = acts
-	} else {
-		workerTypeMap[name] = []rules.Action{f}
-	}
-}
-
 type Worker struct {
 	*rules.Worker
 	manager *Manager
@@ -55,10 +49,13 @@ func CreateWorker(manager *Manager, idx int) (ret *Worker, err error) {
 		return
 	}
 	ret = &Worker{
-		Worker:  &rules.Worker{WCfg: WCfg},
+		Worker:  &rules.Worker{WCfg: WCfg, Id: idx},
 		manager: manager,
 	}
-	if err = ret.ParseWorker(workerTypeMap); err != nil {
+	if err = ret.modifyWithUser(); err != nil {
+		return nil, err
+	}
+	if err = ret.setPool(); err != nil {
 		return nil, err
 	}
 	if err = ret.SetPool(
@@ -78,21 +75,16 @@ func CreateWorkers(manager *Manager) (ret []*Worker, err error) {
 		return
 	}
 	ret = make([]*Worker, 0)
-	for _, wCfg := range wCfgs {
+	for idx, wCfg := range wCfgs {
 		wcfg := wCfg
 		worker := &Worker{
-			Worker:  &rules.Worker{WCfg: wcfg},
+			Worker:  &rules.Worker{WCfg: wcfg, Id: idx},
 			manager: manager,
 		}
-		if err = worker.ParseWorker(workerTypeMap); err != nil {
+		if err := worker.modifyWithUser(); err != nil {
 			return nil, err
 		}
-		if err = worker.SetPool(
-			worker.consume,
-			ants.WithPanicHandler(func(i interface{}) {
-				worker.manager.ErrPush(i)
-			}),
-		); err != nil {
+		if err := worker.setPool(); err != nil {
 			return nil, err
 		}
 		ret = append(ret, worker)
@@ -123,4 +115,43 @@ func (this *Worker) consume(i interface{}) {
 		}
 		input = ret
 	}
+}
+
+func (this *Worker) AddAction(f func([]byte) error) {
+	this.Worker.AddAction(ConsumeRuler(f))
+}
+
+func (this *Worker) modifyWithUser() error {
+	modifyFunc, ok := workerModify[this.WCfg.TypeName()]
+	if !ok {
+		return errWorkerTypeNotDefined
+	}
+	if err := modifyFunc(this); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (this *Worker) setPool() error {
+	return this.SetPool(
+		this.consume,
+		ants.WithPanicHandler(func(i interface{}) {
+			this.manager.ErrPush(i)
+		}),
+	)
+}
+
+func (this *Worker) Info(input string) {
+	this.manager.Log.Info(input)
+}
+
+func (this *Worker) Debugf(tpl string, input ...interface{}) {
+	this.manager.Log.Debugf(tpl, input...)
+}
+
+func (this *Worker) DbAddr() (string, error) {
+	if !this.DbRequired() {
+		return "", errDBNotDefined
+	}
+	return this.manager.Cfg.DbCfg.ToGormAddr()
 }

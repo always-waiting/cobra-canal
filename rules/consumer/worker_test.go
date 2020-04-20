@@ -31,13 +31,19 @@ func testWorker_Cfg00_1(t *testing.T) {
 	manager.Close()
 }
 
+func modify1(w *Worker) error {
+	w.AddAction(testRuler1)
+	return nil
+}
+
 func testRuler1(data []byte) error {
 	fmt.Printf("从消费池获取的数据为: %#v\n", data)
 	return nil
 }
 
 func testWorker_Cfg00_2(t *testing.T) {
-	AddConsumeRuler("test", testRuler1)
+	//AddConsumeRuler("test", testRuler1)
+	RegisterWorkerModify("test", modify1)
 	cfg := config.ConfigV2()
 	ruleCfg := cfg.RulesCfg[0]
 	ruleCfg.ConsumeManage.Workers[0] = map[string]interface{}{"consume_type": "test"}

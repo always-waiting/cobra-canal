@@ -42,7 +42,11 @@ func CreateManager(rule config.RuleConfigV2, wt config.WorkerType) (ret *Manager
 	return
 }
 
-func (this *Manager) Push(in interface{}) (err error) {
+func (this *Manager) QueueNames() []string {
+	return this.sess.QueueNames()
+}
+
+func (this *Manager) Push(in interface{}, ids ...int) (err error) {
 	var info []byte
 	switch in.(type) {
 	case string:
@@ -60,7 +64,7 @@ func (this *Manager) Push(in interface{}) (err error) {
 	if err != nil {
 		return
 	}
-	return this.sess.Push(info)
+	return this.sess.Push(info, ids...)
 }
 
 func (this *Manager) PushByIdx(idx int, in interface{}) (err error) {

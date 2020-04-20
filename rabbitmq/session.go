@@ -53,6 +53,10 @@ type Session struct {
 	isQueueExist    func(string) bool
 }
 
+func (this *Session) QueueNames() []string {
+	return this.queuenames
+}
+
 func (this *Session) Chan() *amqp.Channel {
 	return this.channel
 }
@@ -222,17 +226,22 @@ func (this *Session) Close() error {
 	return nil
 }
 
-func (this *Session) Push(data []byte) error {
+func (this *Session) Push(data []byte, ids ...int) error {
 	if !this.isReady {
 		return errors.New("failed to push push: not connected")
 	}
 	wg := sync.WaitGroup{}
-	for idx, _ := range this.queuenames {
+	if len(ids) == 0 {
+		for idx, _ := range this.queuenames {
+			ids = append(ids, idx)
+		}
+	}
+	for _, id := range ids {
 		wg.Add(1)
 		go func(i int) {
-			defer func() { wg.Done() }()
+			defer wg.Done()
 			this.PushByIdx(i, data)
-		}(idx)
+		}(id)
 	}
 	wg.Wait()
 	return nil
@@ -314,14 +323,9 @@ func (this *Session) StreamByIdx(i int) (ret <-chan amqp.Delivery, err error) {
 	if i >= len(this.queuenames) {
 		return nil, errOutOfIdx
 	}
-	for idx, queuename := range this.queuenames {
-		if idx != i {
-			continue
-		}
-		ret, err = this.channel.Consume(
-			queuename, "", false, false, false, false, nil,
-		)
-		break
-	}
+	queuename := this.queuenames[i]
+	ret, err = this.channel.Consume(
+		queuename, "", false, false, false, false, nil,
+	)
 	return
 }

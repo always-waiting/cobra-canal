@@ -9,7 +9,9 @@ import (
 )
 
 var (
-	ErrManageCfgEmpty = errors.New("manage属性没有定义")
+	ErrManageCfgEmpty        = errors.New("manage属性没有定义")
+	ErrAggreNotDefined       = errors.New("聚合器未定义")
+	ErrTableFilterNotDefined = errors.New("表过滤器未定义")
 )
 
 type RuleConfigV2 struct {
@@ -23,10 +25,6 @@ type RuleConfigV2 struct {
 	TransferManage *ManageConfig            `toml:"transfermanage" json:",omitempty"`
 	ConsumeManage  *ManageConfig            `toml:"consumemanage" json:",omitempty"`
 	Compress       bool                     `toml:"compress"`
-}
-
-func (this RuleConfigV2) IsAggreable() bool {
-	return this.FilterManage.IsAggreable()
 }
 
 func (this RuleConfigV2) ManagerName(workerType WorkerType) (string, error) {
@@ -53,10 +51,6 @@ func (this RuleConfigV2) GetLogger(wt WorkerType) (*log.Logger, error) {
 	return wt.GetLogger(this)
 }
 
-func (this RuleConfigV2) Aggregator() (*collection.Aggregator, error) {
-	return this.FilterManage.Aggregator()
-}
-
 func (this RuleConfigV2) HasTableFilter() bool {
 	return this.FilterManage.HasTableFilter()
 }
@@ -74,25 +68,14 @@ func (this RuleConfigV2) ErrHandler() errors.ErrHandlerV2 {
 }
 
 type ManageConfig struct {
-	Name           string                  `toml:"name"`
-	Desc           string                  `toml:"desc"`
-	DbRequired     bool                    `toml:"db_required"`
-	Worker         *WorkerConfig           `toml:"worker" json:",omitempty"`
-	TableFilterCfg *TableFilterConfig      `toml:"tablefilter" json:",omitempty"`
-	AggreCfg       *collection.AggreConfig `toml:"aggregation" json:",omitempty"`
-	Workers        []WorkerConfig          `toml:"workers" json:",omitempty"`
+	Name           string             `toml:"name"`
+	Desc           string             `toml:"desc"`
+	TableFilterCfg *TableFilterConfig `toml:"tablefilter" json:",omitempty"`
+	Workers        []WorkerConfig     `toml:"workers" json:",omitempty"`
 }
 
 func (this *ManageConfig) HasTableFilter() bool {
 	return this.TableFilterCfg != nil
-}
-
-func (this *ManageConfig) IsAggreable() bool {
-	return this.AggreCfg != nil
-}
-
-func (this *ManageConfig) Aggregator() (*collection.Aggregator, error) {
-	return collection.CreateAggregator(this.AggreCfg)
 }
 
 type WorkerType int8
@@ -109,6 +92,8 @@ func (this WorkerType) TypeName(cfg WorkerConfig) (ret string) {
 	}
 	if val, ok := cfg[key]; ok {
 		ret = val.(string)
+	} else {
+		ret = "base"
 	}
 	return
 }
@@ -142,107 +127,88 @@ func (this WorkerType) ManagerName(cfg RuleConfigV2) (ret string, err error) {
 
 func (this WorkerType) WorkersName(cfg RuleConfigV2) (ret []string, err error) {
 	ret = make([]string, 0)
+	var prefix string
+	var manager *ManageConfig
 	switch this {
 	case FilterWorker:
 		if cfg.FilterManage == nil {
 			return nil, ErrManageCfgEmpty
 		}
-		name := fmt.Sprintf("filter_%d_%s_%s", cfg.Id, cfg.FilterManage.Name, cfg.FilterManage.Worker.TypeName())
-		ret = append(ret, name)
+		prefix = "filter"
+		manager = cfg.FilterManage
 	case TransferWorker:
 		if cfg.TransferManage == nil {
 			return nil, ErrManageCfgEmpty
 		}
-		for idx, transfer := range cfg.TransferManage.Workers {
-			queueName := fmt.Sprintf("transfer_%d_%s_%d-%s", cfg.Id, cfg.TransferManage.Name, idx, transfer.TypeName())
-			ret = append(ret, queueName)
-		}
+		prefix = "transfer"
+		manager = cfg.TransferManage
 	case ConsumeWorker:
 		if cfg.ConsumeManage == nil {
 			return nil, ErrManageCfgEmpty
 		}
-		for idx, consume := range cfg.ConsumeManage.Workers {
-			name := fmt.Sprintf("consume_%d_%s_%d-%s", cfg.Id, cfg.ConsumeManage.Name, idx, consume.TypeName())
-			ret = append(ret, name)
-		}
+		prefix = "consumer"
+		manager = cfg.ConsumeManage
 	default:
-		err = ErrWorkerTypeNotFound
+		return nil, ErrWorkerTypeNotFound
+	}
+	for idx, worker := range manager.Workers {
+		queueName := fmt.Sprintf("%s_%d_%s_%d-%s", prefix, cfg.Id, manager.Name, idx, worker.TypeName())
+		ret = append(ret, queueName)
 	}
 	return
 }
 
 func (this WorkerType) WorkerName(cfg RuleConfigV2, idx int) (ret string, err error) {
+	var prefix string
+	var manager *ManageConfig
 	switch this {
 	case FilterWorker:
-		ret = fmt.Sprintf("filter_%d_%s_%s", cfg.Id, cfg.FilterManage.Name, cfg.FilterManage.Worker.TypeName())
+		prefix = "filter"
+		manager = cfg.FilterManage
 	case TransferWorker:
-		workers := cfg.TransferManage.Workers
-		if idx >= len(workers) {
-			err = ErrOutOfIndex
-			return
-		}
-		for index, transfer := range cfg.TransferManage.Workers {
-			if index == idx {
-				ret = fmt.Sprintf("transfer_%d_%s_%d-%s", cfg.Id, cfg.TransferManage.Name, idx, transfer.TypeName())
-				break
-			}
-		}
+		prefix = "transfer"
+		manager = cfg.TransferManage
 	case ConsumeWorker:
-		workers := cfg.ConsumeManage.Workers
-		if idx >= len(workers) {
-			err = ErrOutOfIndex
-			return
-		}
-		for index, consume := range cfg.ConsumeManage.Workers {
-			if index == idx {
-				ret = fmt.Sprintf("consume_%d_%s_%d-%s", cfg.Id, cfg.ConsumeManage.Name, idx, consume.TypeName())
-				break
-			}
-		}
+		prefix = "consumer"
+		manager = cfg.ConsumeManage
 	default:
 		err = ErrWorkerTypeNotFound
+		return
 	}
+	if idx >= len(manager.Workers) {
+		err = ErrOutOfIndex
+		return
+	}
+	worker := manager.Workers[idx]
+	ret = fmt.Sprintf("%s_%d_%s_%d-%s", prefix, cfg.Id, manager.Name, idx, worker.TypeName())
 	return
 }
 
 func (this WorkerType) Worker(cfg RuleConfigV2, idx int) (ret WorkerConfig, err error) {
+	var workers []WorkerConfig
 	switch this {
 	case FilterWorker:
-		ret = *cfg.FilterManage.Worker
+		workers = cfg.FilterManage.Workers
 	case TransferWorker:
-		workers := cfg.TransferManage.Workers
-		if idx >= len(workers) {
-			err = ErrOutOfIndex
-			return
-		}
-		for i, worker := range workers {
-			if i == idx {
-				ret = worker
-				break
-			}
-		}
+		workers = cfg.TransferManage.Workers
 	case ConsumeWorker:
-		workers := cfg.ConsumeManage.Workers
-		if idx >= len(workers) {
-			err = ErrOutOfIndex
-			return
-		}
-		for i, worker := range workers {
-			if i == idx {
-				ret = worker
-				break
-			}
-		}
+		workers = cfg.ConsumeManage.Workers
 	default:
 		err = ErrWorkerTypeNotFound
+		return
 	}
+	if idx >= len(workers) {
+		err = ErrOutOfIndex
+		return
+	}
+	ret = workers[idx]
 	return
 }
 
 func (this WorkerType) Workers(cfg RuleConfigV2) (ret []WorkerConfig, err error) {
 	switch this {
 	case FilterWorker:
-		ret = []WorkerConfig{*cfg.FilterManage.Worker}
+		ret = cfg.FilterManage.Workers
 	case TransferWorker:
 		ret = cfg.TransferManage.Workers
 	case ConsumeWorker:
@@ -317,6 +283,11 @@ func (this WorkerConfig) TypeName() (ret string) {
 	return worker.TypeName(this)
 }
 
+func (this WorkerConfig) DbRequired() bool {
+	_, ok := this["db_required"]
+	return ok
+}
+
 func (this WorkerConfig) MaxNum() int {
 	if num, ok := this["max"]; ok {
 		ret := num.(int64)
@@ -331,4 +302,39 @@ func (this WorkerConfig) MinNum() int {
 		return int(ret)
 	}
 	return 1
+}
+
+func (this WorkerConfig) IsAggregable() bool {
+	_, ok := this["aggregation"]
+	return ok
+}
+
+func (this WorkerConfig) Aggregator() (*collection.Aggregator, error) {
+	if !this.IsAggregable() {
+		return nil, ErrAggreNotDefined
+	}
+	input := this["aggregation"]
+	info, ok := input.(map[string]interface{})
+	if !ok {
+		return nil, ErrAggreNotDefined
+	}
+	ret, err := collection.CreateByMap(info)
+	return ret, err
+}
+
+func (this WorkerConfig) HasTableFilter() bool {
+	_, ok := this["tablefilter"]
+	return ok
+}
+
+func (this WorkerConfig) TableFilter() (*TableFilterConfig, error) {
+	if !this.HasTableFilter() {
+		return nil, ErrTableFilterNotDefined
+	}
+	info := this["tablefilter"]
+	input, ok := info.(map[string]interface{})
+	if !ok {
+		return nil, ErrTableFilterNotDefined
+	}
+	return CreateTableFilterByMap(input)
 }

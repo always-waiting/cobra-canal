@@ -15,6 +15,11 @@ func TestWorker(t *testing.T) {
 	}
 }
 
+func modify1(worker *Worker) error {
+	worker.AddAction(testRuler1)
+	return nil
+}
+
 func testRuler1(es []event.EventV2) (interface{}, error) {
 	return fmt.Sprintf(`{"事件个数":%d}`, len(es)), nil
 }
@@ -41,7 +46,8 @@ func testWorker_Cfg00_1(t *testing.T) {
 }
 
 func testWorker_Cfg00_2(t *testing.T) {
-	AddTransferRuler("test", testRuler1)
+	//AddTransferRuler("test", testRuler1)
+	RegisterWorkerModify("test", modify1)
 	cfg := config.ConfigV2()
 	ruleCfg := cfg.RulesCfg[0]
 	ruleCfg.TransferManage.Workers[0] = map[string]interface{}{"consume_type": "test"}

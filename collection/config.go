@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/always-waiting/cobra-canal/event"
 	"github.com/juju/errors"
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -12,19 +13,28 @@ const (
 )
 
 type AggreConfig struct {
-	Time        int             `toml:"time" description:"缓存秒数"`
-	IdxRulesCfg []IdxRuleConfig `toml:"idxrule" description:"缓存键的生成规则"`
+	Time        int             `toml:"time" description:"缓存秒数" mapstructure:"time"`
+	IdxRulesCfg []IdxRuleConfig `toml:"idxrule" description:"缓存键的生成规则" mapstructure:"idxrule"`
 }
 
 type IdxRuleConfig struct {
-	Tables       []string `toml:"tables" description:"记录日志的表"`
-	IdxField     string   `toml:"idx_field" description:"日志唯一key字段"`
-	IdxPrefix    string   `toml:"idx_prefix" description:"日志唯一key前缀"`
-	IdxType      string   `toml:"idx_type" description:"日志唯一key字段类型"`
-	AggreField   string   `toml:"aggre_field" description:"用于多表关联的聚合域"`
-	UserField    string   `toml:"user_field" description:"操作人字段"`
-	PrimaryKey   string   `toml:"primary_key" description:"表主键字段"`
-	ExcludeField []string `toml:"exclude_field" description:"表主键字段"`
+	Tables       []string `toml:"tables" description:"记录日志的表" mapstructure:"tables"`
+	IdxField     string   `toml:"idx_field" description:"日志唯一key字段" mapstructure:"idx_field"`
+	IdxPrefix    string   `toml:"idx_prefix" description:"日志唯一key前缀" mapstructure:"idx_prefix"`
+	IdxType      string   `toml:"idx_type" description:"日志唯一key字段类型" mapstructure:"idx_type"`
+	AggreField   string   `toml:"aggre_field" description:"用于多表关联的聚合域" mapstructure:"aggre_field"`
+	UserField    string   `toml:"user_field" description:"操作人字段" mapstructure:"user_field"`
+	PrimaryKey   string   `toml:"primary_key" description:"表主键字段" mapstructure:"primary_key"`
+	ExcludeField []string `toml:"exclude_field" description:"表主键字段" mapstructure:"exclude_field"`
+}
+
+func CreateByMap(input map[string]interface{}) (*Aggregator, error) {
+	cfg := AggreConfig{}
+	err := mapstructure.Decode(input, &cfg)
+	if err != nil {
+		return nil, err
+	}
+	return CreateAggregator(&cfg)
 }
 
 func (this IdxRuleConfig) Idx(e event.EventV2) (ret string, err error) {

@@ -32,7 +32,6 @@ queue_addr = "amqp://guest:guest@localhost:5672/cobra" # 队列地址
 [rules.filtermanage] # 过滤经理配置
 name = "filtername" # 经理的标识
 desc = "说明"
-db_required = true # 是否需要主库链接
 [rules.filtermanage.tablefilter]
 db_name = "db_cmdb"
 include_table = ["t_device_basic", "t_device_config"]

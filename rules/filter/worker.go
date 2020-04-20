@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"github.com/always-waiting/cobra-canal/collection"
 	"github.com/always-waiting/cobra-canal/config"
 	"github.com/always-waiting/cobra-canal/errors"
 	"github.com/always-waiting/cobra-canal/event"
@@ -9,19 +10,18 @@ import (
 )
 
 var (
-	workerTypeMap = map[string][]rules.Action{
-		"base": []rules.Action{},
+	workerModify = map[string]func(*Worker) error{
+		"base": func(w *Worker) error {
+			return nil
+		},
 	}
-	errInputType = errors.New("输入参数不是*event.EventV2类型")
+	errInputType            = errors.New("输入参数不是*event.EventV2类型")
+	errWorkerTypeNotDefined = errors.New("未定义的filter类型")
+	errDBNotDefined         = errors.New("没定义主库链接")
 )
 
-func AddAction(name string, f func(*event.EventV2) (bool, error)) {
-	if acts, ok := workerTypeMap[name]; !ok {
-		workerTypeMap[name] = []rules.Action{FilterRuler(f)}
-	} else {
-		acts = append(acts, FilterRuler(f))
-		workerTypeMap[name] = acts
-	}
+func RegisterWorkerModify(name string, f func(*Worker) error) {
+	workerModify[name] = f
 }
 
 type FilterRuler func(*event.EventV2) (bool, error)
@@ -34,41 +34,153 @@ func (this FilterRuler) Run(i interface{}) (interface{}, error) {
 	return this(e)
 }
 
-func AddFilterRuler(name string, f FilterRuler) {
-	if acts, ok := workerTypeMap[name]; ok {
-		acts = append(acts, f)
-		workerTypeMap[name] = acts
-	} else {
-		workerTypeMap[name] = []rules.Action{f}
-	}
-}
-
 type Worker struct {
 	*rules.Worker
-	manager *Manager
+	manager    *Manager
+	aggregator *collection.Aggregator
 }
 
-func CreateWorker(manager *Manager) (ret *Worker, err error) {
-	wCfg, err := manager.Cfg.Worker(config.FilterWorker, 0)
+func defaultModify(w *Worker) error {
+	if !w.WCfg.HasTableFilter() {
+		return nil
+	}
+	tf, err := w.WCfg.TableFilter()
+	if err != nil {
+		return err
+	}
+	w.AddAction(func(e *event.EventV2) (bool, error) {
+		return tf.IsTablePass(e.Table.Schema, e.Table.Name), nil
+	})
+	return nil
+}
+
+func CreateWorker(manager *Manager, idx int) (ret *Worker, err error) {
+	wCfg, err := manager.Cfg.Worker(config.FilterWorker, idx)
 	if err != nil {
 		return
 	}
 	ret = &Worker{
-		Worker:  &rules.Worker{WCfg: wCfg},
+		Worker:  &rules.Worker{WCfg: wCfg, Id: idx},
 		manager: manager,
 	}
-	if err = ret.ParseWorker(workerTypeMap); err != nil {
+	if err := ret.modifyWithUser(); err != nil {
 		return nil, err
 	}
-	if err = ret.SetPool(
-		ret.filter,
-		ants.WithPanicHandler(func(i interface{}) {
-			ret.manager.ErrPush(i)
-		}),
-	); err != nil {
+	if err := ret.setPool(); err != nil {
+		return nil, err
+	}
+	if err := ret.setAggregator(); err != nil {
 		return nil, err
 	}
 	return
+}
+
+func CreateWorkers(manager *Manager) (ret []*Worker, err error) {
+	wCfgs, err := manager.Cfg.Workers(config.FilterWorker)
+	if err != nil {
+		return
+	}
+	ret = make([]*Worker, 0)
+	for idx, wCfg := range wCfgs {
+		wcfg := wCfg
+		worker := &Worker{
+			Worker:  &rules.Worker{WCfg: wcfg, Id: idx},
+			manager: manager,
+		}
+		if err = worker.modifyWithUser(); err != nil {
+			return nil, err
+		}
+		if err = worker.setPool(); err != nil {
+			return nil, err
+		}
+		if err = worker.setAggregator(); err != nil {
+			return nil, err
+		}
+		ret = append(ret, worker)
+	}
+	return
+}
+
+func (this *Worker) setAggregator() error {
+	var err error
+	this.aggregator, err = this.WCfg.Aggregator()
+	go this.Aggregator()
+	return err
+}
+
+func (this *Worker) Aggregator() {
+	out := this.aggregator.Collection()
+	for {
+		select {
+		case <-this.manager.Ctx.Done():
+			return
+		case ele := <-out:
+			this.manager.Log.Infof("把事件组%s发送到数据转换池", ele.Key)
+			if this.Id == len(this.manager.workers)-1 {
+				ids := make([]int, 0)
+				for idx, _ := range this.manager.Next.QueueNames() {
+					if idx >= this.Id {
+						ids = append(ids, idx)
+					}
+				}
+				if err := this.manager.Next.Push(ele.Events, ids...); err != nil {
+					this.manager.Log.Infof("发送数据转换池失败: %s", err)
+					this.manager.ErrPush(err)
+				}
+			} else {
+				if err := this.manager.Next.PushByIdx(this.Id, ele.Events); err != nil {
+					this.manager.Log.Infof("发送数据转换池失败: %s", err)
+					this.manager.ErrPush(err)
+				}
+			}
+		}
+	}
+}
+
+func (this *Worker) Close() {
+	this.aggregator.Close()
+}
+
+func (this *Worker) setPool() error {
+	return this.SetPool(
+		this.filter,
+		ants.WithPanicHandler(func(i interface{}) {
+			this.manager.ErrPush(i)
+		}),
+	)
+}
+
+func (this *Worker) modifyWithUser() error {
+	if err := defaultModify(this); err != nil {
+		return err
+	}
+	modifyFunc, ok := workerModify[this.WCfg.TypeName()]
+	if !ok {
+		return errWorkerTypeNotDefined
+	}
+	if err := modifyFunc(this); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (this *Worker) AddAction(f func(*event.EventV2) (bool, error)) {
+	this.Worker.AddAction(FilterRuler(f))
+}
+
+func (this *Worker) Info(input string) {
+	this.manager.Log.Info(input)
+}
+
+func (this *Worker) Debugf(tpl string, input ...interface{}) {
+	this.manager.Log.Debugf(tpl, input...)
+}
+
+func (this *Worker) DbAddr() (string, error) {
+	if !this.DbRequired() {
+		return "", errDBNotDefined
+	}
+	return this.manager.Cfg.DbCfg.ToGormAddr()
 }
 
 func (this *Worker) filter(i interface{}) {
@@ -86,14 +198,42 @@ func (this *Worker) filter(i interface{}) {
 			return
 		}
 	}
-	if this.manager.aggregator != nil {
-		if key, err := this.manager.aggregator.Add(*e); err != nil {
+	if this.aggregator != nil {
+		if key, err := this.aggregator.Add(*e); err != nil {
 			this.manager.Log.Debugf("事件(%s)聚合出错: %s", e, err)
 			this.manager.ErrPush(err)
 		} else {
 			this.manager.Log.Debugf("事件聚合到%s键中", key)
 		}
 	} else {
-		this.manager.Next.Push([]event.EventV2{*e})
+		if this.Id == len(this.manager.workers)-1 {
+			ids := make([]int, 0)
+			for idx, _ := range this.manager.Next.QueueNames() {
+				if idx >= this.Id {
+					ids = append(ids, idx)
+				}
+			}
+			if err := this.manager.Next.Push([]event.EventV2{*e}, ids...); err != nil {
+				this.manager.Log.Infof("发送数据转换池失败: %s", err)
+				this.manager.ErrPush(err)
+			}
+		} else {
+			if err := this.manager.Next.PushByIdx(this.Id, []event.EventV2{*e}); err != nil {
+				this.manager.Log.Infof("发送数据转换池失败: %s", err)
+				this.manager.ErrPush(err)
+			}
+		}
 	}
+	/*
+		if this.manager.aggregator != nil {
+			if key, err := this.manager.aggregator.Add(*e); err != nil {
+				this.manager.Log.Debugf("事件(%s)聚合出错: %s", e, err)
+				this.manager.ErrPush(err)
+			} else {
+				this.manager.Log.Debugf("事件聚合到%s键中", key)
+			}
+		} else {
+			this.manager.Next.Push([]event.EventV2{*e})
+		}
+	*/
 }

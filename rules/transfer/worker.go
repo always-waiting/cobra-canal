@@ -9,20 +9,19 @@ import (
 )
 
 var (
-	workerTypeMap = map[string][]rules.Action{
-		"base": []rules.Action{},
+	workerModify = map[string]func(*Worker) error{
+		"base": func(w *Worker) error {
+			return nil
+		},
 	}
-	errInputType  = errors.New("输入参数不是[]event.EventV2类型")
-	errOutOfIndex = errors.New("下标越界")
+	errInputType            = errors.New("输入参数不是[]event.EventV2类型")
+	errOutOfIndex           = errors.New("下标越界")
+	errWorkerTypeNotDefined = errors.New("未定义的transfer类型")
+	errDBNotDefined         = errors.New("没定义主库链接")
 )
 
-func AddAction(name string, f func([]event.EventV2) (interface{}, error)) {
-	if acts, ok := workerTypeMap[name]; !ok {
-		workerTypeMap[name] = []rules.Action{TransferRuler(f)}
-	} else {
-		acts = append(acts, TransferRuler(f))
-		workerTypeMap[name] = acts
-	}
+func RegisterWorkerModify(name string, f func(*Worker) error) {
+	workerModify[name] = f
 }
 
 type TransferRuler func([]event.EventV2) (interface{}, error)
@@ -33,15 +32,6 @@ func (this TransferRuler) Run(i interface{}) (interface{}, error) {
 		return nil, errInputType
 	}
 	return this(input)
-}
-
-func AddTransferRuler(name string, f TransferRuler) {
-	if acts, ok := workerTypeMap[name]; ok {
-		acts = append(acts, f)
-		workerTypeMap[name] = acts
-	} else {
-		workerTypeMap[name] = []rules.Action{f}
-	}
 }
 
 type Worker struct {
@@ -58,15 +48,10 @@ func CreateWorker(manager *Manager, idx int) (ret *Worker, err error) {
 		Worker:  &rules.Worker{WCfg: WCfg},
 		manager: manager,
 	}
-	if err = ret.ParseWorker(workerTypeMap); err != nil {
+	if err = ret.modifyWithUser(); err != nil {
 		return nil, err
 	}
-	if err = ret.SetPool(
-		ret.transfer,
-		ants.WithPanicHandler(func(i interface{}) {
-			ret.manager.ErrPush(i)
-		}),
-	); err != nil {
+	if err = ret.setPool(); err != nil {
 		return nil, err
 	}
 	return
@@ -84,15 +69,10 @@ func CreateWorkers(manager *Manager) (ret []*Worker, err error) {
 			Worker:  &rules.Worker{WCfg: wcfg},
 			manager: manager,
 		}
-		if err = worker.ParseWorker(workerTypeMap); err != nil {
+		if err := worker.modifyWithUser(); err != nil {
 			return nil, err
 		}
-		if err = worker.SetPool(
-			worker.transfer,
-			ants.WithPanicHandler(func(i interface{}) {
-				worker.manager.ErrPush(i)
-			}),
-		); err != nil {
+		if err := worker.setPool(); err != nil {
 			return nil, err
 		}
 		ret = append(ret, worker)
@@ -103,6 +83,45 @@ func CreateWorkers(manager *Manager) (ret []*Worker, err error) {
 type Param struct {
 	Data []event.EventV2
 	Idx  int
+}
+
+func (this *Worker) AddAction(f func([]event.EventV2) (interface{}, error)) {
+	this.Worker.AddAction(TransferRuler(f))
+}
+
+func (this *Worker) modifyWithUser() error {
+	modifyFunc, ok := workerModify[this.WCfg.TypeName()]
+	if !ok {
+		return errWorkerTypeNotDefined
+	}
+	if err := modifyFunc(this); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (this *Worker) setPool() error {
+	return this.SetPool(
+		this.transfer,
+		ants.WithPanicHandler(func(i interface{}) {
+			this.manager.ErrPush(i)
+		}),
+	)
+}
+
+func (this *Worker) Info(input string) {
+	this.manager.Log.Info(input)
+}
+
+func (this *Worker) Debugf(tpl string, input ...interface{}) {
+	this.manager.Log.Debugf(tpl, input...)
+}
+
+func (this *Worker) DbAddr() (string, error) {
+	if !this.DbRequired() {
+		return "", errDBNotDefined
+	}
+	return this.manager.Cfg.DbCfg.ToGormAddr()
 }
 
 func (this *Worker) transfer(i interface{}) {

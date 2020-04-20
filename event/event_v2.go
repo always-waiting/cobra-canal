@@ -178,6 +178,31 @@ func (this *EventV2) GetInt64(row int, column string) (ret int64, err error) {
 	return
 }
 
+func (this *EventV2) GetInt32(row int, column string) (ret int32, err error) {
+	var i interface{}
+	var ok bool
+	if i, err = this.GetColumnValue(row, column); err != nil {
+		return
+	}
+	if ret, ok = i.(int32); !ok {
+		err = errors.Errorf("%T无法转换为int32", i)
+		return
+	}
+	return
+}
+
+func (this *EventV2) GetInt8(row int, column string) (ret int8, err error) {
+	var i interface{}
+	var ok bool
+	if i, err = this.GetColumnValue(row, column); err != nil {
+		return
+	}
+	if ret, ok = i.(int8); !ok {
+		err = errors.Errorf("%T无法转换为int8", i)
+		return
+	}
+	return
+}
 func (this *EventV2) GetFloat(row int, column string) (ret float64, err error) {
 	var i interface{}
 	if i, err = this.GetColumnValue(row, column); err != nil {
@@ -186,6 +211,20 @@ func (this *EventV2) GetFloat(row int, column string) (ret float64, err error) {
 	switch i.(type) {
 	case float64, float32:
 		ret = reflect.ValueOf(i).Float()
+	default:
+		err = ErrTypeErr
+	}
+	return
+}
+
+func (this *EventV2) GetString(row int, column string) (ret string, err error) {
+	var i interface{}
+	if i, err = this.GetColumnValue(row, column); err != nil {
+		return
+	}
+	switch i.(type) {
+	case string:
+		ret = reflect.ValueOf(i).String()
 	default:
 		err = ErrTypeErr
 	}
