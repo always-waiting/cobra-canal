@@ -1,13 +1,23 @@
 package config
 
+import (
+	"github.com/mitchellh/mapstructure"
+)
+
 type TableFilterable interface {
 	IsTablePass(string, string) bool
 }
 
 type TableFilterConfig struct {
-	DbName  string   `toml:"db_name"`
-	Include []string `toml:"include_table"`
-	Exclude []string `toml:"exclude_table"`
+	DbName  string   `toml:"db_name" mapstructure:"db_name"`
+	Include []string `toml:"include_table" mapstructure:"include_table"`
+	Exclude []string `toml:"exclude_table" mapstructure:"exclude_table"`
+}
+
+func CreateTableFilterByMap(input map[string]interface{}) (*TableFilterConfig, error) {
+	cfg := TableFilterConfig{}
+	err := mapstructure.Decode(input, &cfg)
+	return &cfg, err
 }
 
 func (t *TableFilterConfig) IsTablePass(dbname string, table string) (flag bool) {

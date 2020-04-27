@@ -1,103 +1,95 @@
 package config
 
 import (
-	"github.com/fsnotify/fsnotify"
-	"github.com/juju/errors"
-	"github.com/siddontang/go-log/log"
-	"os"
+	"fmt"
+	"github.com/always-waiting/cobra-canal/errors"
+	"github.com/mitchellh/mapstructure"
+	"github.com/siddontang/go-mysql/canal"
+	"github.com/spf13/viper"
+	"path/filepath"
 )
 
 const (
-	LOGCONFIG_ERR1        = "log-file需要定义"
-	DEFAULT_PORT          = 6543
-	DEFAULT_BUFFER_NUMBER = 1000 * 100
+	ERROR1            = "Configuration does not exist"
+	ERROR2            = "未知错误类型(%#v)"
+	IDXRULE_ERR1      = "从event.Event中没有获取到aggre_field指定的域(%s)"
+	IDXRULE_ERR2      = "idxrule出现未知错误"
+	IDXRULE_SEPARATOR = ","
+	DEFAULT_BUFFER    = 1000
 )
 
-func (c *configure) SetLog() (err error) {
-	switch c.LogCfg.Type {
-	case "file":
-		err = c.SetLogFile()
-	default:
-		c.SetLevel()
-		log.Info("默认输出到屏幕")
-	}
-	return
+type ConfigureV2 struct {
+	CobraCfg *CobraConfig   `toml:"cobra" description:"监控从库的配置" json:",omitempty"`
+	RulesCfg []RuleConfigV2 `toml:"rules" description:"监控规则工厂的配置" json:",omitempty"`
+	path     string
 }
 
-func (c *configure) String() string {
-	return c.path
+func (this *ConfigureV2) String() string {
+	return this.path
 }
 
-func (c *configure) GetBufferNum() int {
-	if c.BufferNum == 0 {
-		log.Infof("handle使用默认缓存长度: %d", DEFAULT_BUFFER_NUMBER)
-		return DEFAULT_BUFFER_NUMBER
-	}
-	return c.BufferNum
-}
+var configV2 *ConfigureV2
 
-func (c *configure) GetPort() int {
-	if c.Port == 0 {
-		log.Infof("使用默认端口: %d", DEFAULT_PORT)
-		return DEFAULT_PORT
+func LoadV2(configFile string) {
+	if configFile == "" {
+		configFile = "/tmp/cobra.toml"
 	}
-	return c.Port
-}
-
-func (c *configure) SetLogFile() (err error) {
-	if c.LogCfg.Filename == "" {
-		err = errors.New(LOGCONFIG_ERR1)
-		return
-	}
-	var file *os.File
-	if file, err = os.Create(c.LogCfg.Filename); err != nil {
-		return
-	}
-	var h *log.StreamHandler
-	if h, err = log.NewStreamHandler(file); err != nil {
-		return
-	}
-	l := log.NewDefault(h)
-	log.SetDefaultLogger(l)
-	c.SetLevel()
-	go c.DaemonLogFile(file)
-	return
-}
-
-func (c *configure) SetLevel() {
-	if c.LogCfg.Level != "" {
-		log.SetLevelByName(c.LogCfg.Level)
-	}
-}
-
-func (c *configure) DaemonLogFile(file *os.File) {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
+	viper.SetConfigFile(configFile)
+	if err := viper.ReadInConfig(); err != nil {
 		panic(err)
 	}
-	defer watcher.Close()
-	done := make(chan bool)
-	go func() {
-	loop:
-		for {
-			select {
-			case event := <-watcher.Events:
-				if event.Op&fsnotify.Rename == fsnotify.Rename ||
-					event.Op&fsnotify.Remove == fsnotify.Remove {
-					file.Close()
-					break loop
-				}
-			case _ = <-watcher.Errors:
-				file.Close()
-				break loop
-			}
+	configV2 = &ConfigureV2{}
+	if err := viper.Unmarshal(configV2, func(m *mapstructure.DecoderConfig) {
+		m.TagName = "toml"
+	}); err != nil {
+		panic(err)
+	}
+	configV2.path = viper.ConfigFileUsed()
+}
+
+func ConfigV2() *ConfigureV2 {
+	if configV2 != nil {
+		return configV2
+	} else {
+		panic(errors.New(ERROR1))
+	}
+}
+
+func LoadTestCfg(absolutePath string) (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = errors.Errorf("%v", e)
 		}
-		done <- true
 	}()
-	err = watcher.Add(c.LogCfg.Filename)
+	path, err := filepath.Abs("./")
 	if err != nil {
-		panic(err)
+		return err
 	}
-	<-done
-	c.SetLogFile()
+	file := fmt.Sprintf("%s/%s", path, absolutePath)
+	LoadV2(file)
+	return
+}
+
+type CobraConfig struct {
+	*canal.Config
+	DbCfg  *MysqlConfig             `toml:"db" description:"监控信息记录库" json:",omitempty"`
+	LogCfg *LogConfig               `toml:"log" description:"日志配置" json:",omitempty"`
+	ErrCfg *errors.ErrHandlerConfig `toml:"err" description:"错误处理配置" json:",omitempty"`
+	Rebase bool                     `toml:"rebase"`
+	Host   string                   `toml:"host"`
+	Buffer int                      `toml:"buffer"`
+}
+
+func (this *CobraConfig) GetLogCfg() *LogConfig {
+	if this.LogCfg != nil {
+		return this.LogCfg
+	}
+	return DefaultLogCfg
+}
+
+func (this *CobraConfig) GetBuffer() int {
+	if this.Buffer == 0 {
+		this.Buffer = 500
+	}
+	return this.Buffer
 }

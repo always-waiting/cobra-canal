@@ -1,82 +1,63 @@
 package errors
 
 import (
+	"context"
 	"errors"
 	"fmt"
 )
 
-const (
-	BUFFER = 10
-)
-
-func MakeErrHandler(sender Sender, buffer int) *ErrHandler {
-	errh := ErrHandler{}
-	errh.sender = sender
-	errh.errChannel = make(chan error, buffer)
-	errh.confirm = make(chan bool, 1)
-	return &errh
+func New(info string) error {
+	return errors.New(info)
 }
 
-func MakeFakeHandler() *ErrHandler {
-	errh := ErrHandler{}
-	errh.sender = FakeSender{}
-	errh.errChannel = make(chan error, 10)
-	errh.confirm = make(chan bool, 1)
-	return &errh
+func Errorf(format string, args ...interface{}) error {
+	return errors.New(fmt.Sprintf(format, args...))
 }
 
 type Sender interface {
 	Send(string) (string, error)
 }
 
-type ErrHandler struct {
+type ErrHandlerV2 struct {
 	sender     Sender
+	ctx        context.Context
+	cancal     context.CancelFunc
 	errChannel chan error
-	closed     bool
-	isSendable bool
-	confirm    chan bool
 }
 
-func (this *ErrHandler) Reset() {
+func (this *ErrHandlerV2) SetSender(s Sender) {
+	this.sender = s
+}
+
+func (this *ErrHandlerV2) Init() {
 	this.errChannel = make(chan error, cap(this.errChannel))
+	this.ctx, this.cancal = context.WithCancel(context.Background())
 }
 
-func (this *ErrHandler) Push(input interface{}) {
-	defer func() {
-		_ = recover()
-	}()
-	if this.closed {
-		return
-	}
-	err, ok := input.(error)
-	if !ok {
-		err = errors.New(fmt.Sprintf("%v", input))
-	}
-	this.errChannel <- err
-}
-
-func (this *ErrHandler) Send() {
-	if this.isSendable {
-		return
-	}
-	this.isSendable = true
-	for {
-		err, isOpen := <-this.errChannel
-		if !isOpen {
-			break
+func (this *ErrHandlerV2) Push(input interface{}) {
+	if this.errChannel != nil {
+		err, ok := input.(error)
+		if !ok {
+			err = errors.New(fmt.Sprintf("%v", input))
 		}
-		this.sender.Send(err.Error())
+		this.errChannel <- err
 	}
-	this.confirm <- true
 }
 
-func (this *ErrHandler) Close() {
-	if this.closed {
-		return
+func (this *ErrHandlerV2) Send() {
+	for {
+		select {
+		case <-this.ctx.Done():
+			this.errChannel = nil
+			return
+		case err := <-this.errChannel:
+			this.sender.Send(err.Error())
+		}
 	}
-	close(this.errChannel)
-	this.closed = true
-	<-this.confirm
+}
+
+func (this *ErrHandlerV2) Close() {
+	this.cancal()
 }
 
 type FakeSender struct{}
@@ -84,5 +65,5 @@ type FakeSender struct{}
 func (this FakeSender) Send(doc string) (string, error) {
 	fmt.Println(">>>>fake error sender<<<<")
 	fmt.Println(doc)
-	return "", nil
+	return doc, nil
 }

@@ -1,45 +1,73 @@
 package config
 
-type RuleConfig struct {
-	Name           string             `toml:"name" description:"规则的名称"`
-	Desc           string             `toml:"desc" description:"规则的简介"`
-	BufferNum      int                `toml:"buffer_number" description:"事件缓存个数"`
-	ReplySync      []string           `toml:"reply_sync" description:"规则需要相应的同步类型"`
-	MasterDBCfg    *MysqlConfig       `toml:"masterdb" description:"上游监控数据库名，用于生成读取上游数据库的对象"`
-	TableFilterCfg *TableFilterConfig `toml:"tablefilter" description:"表过滤器"`
-	ConsumerCfg    []*ConsumerConfig  `toml:"consumer" description:"消费对象配置"`
-	AggreCfg       *AggreConfig       `toml:"aggregation" description:"缓存配置"`
-	ErrSenderCfg   errSenderConfig    `toml:"err_sender"`
-	LogCfg         LogConfig          `toml:"log"`
-	WorkerNum      int                `toml:"worker"`
+import (
+	"github.com/always-waiting/cobra-canal/errors"
+	"github.com/siddontang/go-log/log"
+)
+
+var (
+	ErrManageCfgEmpty        = errors.New("manage属性没有定义")
+	ErrAggreNotDefined       = errors.New("聚合器未定义")
+	ErrTableFilterNotDefined = errors.New("表过滤器未定义")
+)
+
+var (
+	ErrWorkerTypeNotFound = errors.New("没有发现对应的worker type")
+	ErrOutOfIndex         = errors.New("下标越界")
+)
+
+type RuleConfigV2 struct {
+	Id            int                      `toml:"id"`
+	Desc          string                   `toml:"desc"`
+	LineCfg       LineConfig               `toml:"line_config"`
+	LogCfg        *LogConfig               `toml:"log" json:",omitempty"`
+	DbCfg         *MysqlConfig             `toml:"db" json:",omitempty"`
+	ErrCfg        *errors.ErrHandlerConfig `toml:"err" json:",omitempty"`
+	FilterManage  *ManageConfig            `toml:"filtermanage" json:",omitempty"`
+	ConsumeManage *ManageConfig            `toml:"consumemanage" json:",omitempty"`
+	Compress      bool                     `toml:"compress"`
 }
 
-func (r *RuleConfig) HasTableFilter() bool {
-	return r.TableFilterCfg != nil
+func (this RuleConfigV2) BuffNum(wt WorkerType) (int, error) {
+	return wt.BuffNum(this)
 }
 
-func (r *RuleConfig) IsAggreable() bool {
-	return r.AggreCfg != nil
+func (this RuleConfigV2) ManagerName(workerType WorkerType) (string, error) {
+	return workerType.ManagerName(this)
 }
 
-func (r *RuleConfig) InitAggregator() (ret Aggregatable) {
-	if r.IsAggreable() {
-		aggre := makeDefaultAggregator(r)
-		ret = aggre
+func (this RuleConfigV2) WorkerName(wt WorkerType, idx int) (string, error) {
+	return wt.WorkerName(this, idx)
+}
+
+func (this RuleConfigV2) WorkersName(workerType WorkerType) ([]string, error) {
+	return workerType.WorkersName(this)
+}
+
+func (this RuleConfigV2) Worker(wt WorkerType, idx int) (WorkerConfig, error) {
+	return wt.Worker(this, idx)
+}
+
+func (this RuleConfigV2) Workers(wt WorkerType) ([]WorkerConfig, error) {
+	return wt.Workers(this)
+}
+
+func (this RuleConfigV2) GetLogger(wt WorkerType) (*log.Logger, error) {
+	return wt.GetLogger(this)
+}
+
+func (this RuleConfigV2) HasTableFilter() bool {
+	return this.FilterManage.HasTableFilter()
+}
+
+func (this RuleConfigV2) TableFilter() *TableFilterConfig {
+	return this.FilterManage.TableFilterCfg
+
+}
+
+func (this RuleConfigV2) ErrHandler() errors.ErrHandlerV2 {
+	if this.ErrCfg != nil {
+		return this.ErrCfg.MakeHandler()
 	}
-	return
-}
-
-func (r *RuleConfig) GetBufferNum() int {
-	if r.BufferNum == 0 {
-		return 10
-	}
-	return r.BufferNum
-}
-
-func (r *RuleConfig) Worker() int {
-	if r.WorkerNum == 0 {
-		return 1
-	}
-	return r.WorkerNum
+	return errors.DefaultErr.MakeHandler()
 }

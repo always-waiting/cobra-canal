@@ -1,20 +1,28 @@
 package event
 
 import (
-	"regexp"
-	"strings"
-
-	"github.com/juju/errors"
+	"bytes"
+	"compress/flate"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/siddontang/go-mysql/canal"
 	"github.com/siddontang/go-mysql/replication"
-	"github.com/siddontang/go-mysql/schema"
+	"io"
+	"regexp"
+	"strings"
+)
+
+var (
+	ErrActionNotDefine = errors.New("mysql动作为定义")
+	ErrInputEmpty      = errors.New("输入为空")
 )
 
 const (
 	EVENT_ERR1 = "解析DDL语句失败(%s)"
 )
 
-func ParseOnRow(rowevent *canal.RowsEvent) (events []Event, err error) {
+func ParseOnRowV2(rowevent *canal.RowsEvent) (events []EventV2, err error) {
 	var step int
 	switch rowevent.Action {
 	case "update":
@@ -22,30 +30,46 @@ func ParseOnRow(rowevent *canal.RowsEvent) (events []Event, err error) {
 	case "insert", "delete":
 		step = 1
 	default:
-		err = errors.Errorf(UNKNOW_ACTION, rowevent.Action)
+		err = ErrActionNotDefine
 		return
 	}
-	events = make([]Event, 0)
+	events = make([]EventV2, 0)
+	table := &Table{
+		Schema: rowevent.Table.Schema,
+		Name:   rowevent.Table.Name,
+	}
+	table.FillColumn(rowevent.Table)
 	for i := 0; i < len(rowevent.Rows); i = i + step {
-		event := Event{Table: rowevent.Table, Type: SYNC_TYPE_ONROW, Action: rowevent.Action}
+		event := EventV2{
+			Type:   SYNC_TYPE_ONROW,
+			Action: rowevent.Action,
+			Table:  table,
+		}
 		event.RawData = make([][]interface{}, 0)
 		for j := 0; j < step; j++ {
 			data := rowevent.Rows[i+j]
 			event.RawData = append(event.RawData, data)
 		}
-		event.IsLegal()
+		if !event.IsLegal() {
+			return nil, event.Err
+		}
 		events = append(events, event)
 	}
 	return
 }
 
-func ParseOnDDL(queryEvent *replication.QueryEvent) (e Event, err error) {
-	e = Event{Type: SYNC_TYPE_ONDDL, DDLSql: string(queryEvent.Query)}
-	e.Table = &schema.Table{
+func ParseOnDDLV2(queryEvent *replication.QueryEvent) (e EventV2, err error) {
+	e = EventV2{
+		Type:   SYNC_TYPE_ONDDL,
+		DDLSql: string(queryEvent.Query),
+	}
+	e.Table = &Table{
 		Schema: string(queryEvent.Schema),
 	}
 	e.Table.Name, err = getTableNameByQuery(string(queryEvent.Query))
-	e.IsLegal()
+	if !e.IsLegal() {
+		err = e.Err
+	}
 	return
 }
 
@@ -63,9 +87,59 @@ func getTableNameByQuery(query string) (ret string, err error) {
 	}
 	matches := reg.FindSubmatch([]byte(query))
 	if len(matches) == 0 {
-		err = errors.Errorf(EVENT_ERR1, query)
+		err = errors.New(fmt.Sprintf(EVENT_ERR1, query))
 		return
 	}
 	ret = strings.Trim(string(matches[2]), "`")
 	return
+}
+
+func ToJSON(in interface{}) ([]byte, error) {
+	return json.Marshal(in)
+}
+
+func Compress(in interface{}) ([]byte, error) {
+	info, err := json.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	zw, err := flate.NewWriter(&buf, flate.BestCompression)
+	if err != nil {
+		return nil, err
+	}
+	defer zw.Close()
+	if _, err = zw.Write(info); err != nil {
+		return nil, err
+	}
+	zw.Flush()
+	return buf.Bytes(), err
+}
+
+func Decompress(data []byte) ([]EventV2, error) {
+	inbuffer := bytes.NewBuffer(data)
+	flateReader := flate.NewReader(inbuffer)
+	defer flateReader.Close()
+	out := bytes.NewBuffer(nil)
+	io.Copy(out, flateReader)
+	return FromJSON(out.Bytes())
+}
+
+func FromJSON(data []byte) ([]EventV2, error) {
+	if len(data) == 0 {
+		return nil, ErrInputEmpty
+	}
+	if data[0] == 123 {
+		obj := EventV2{}
+		if err := json.Unmarshal(data, &obj); err != nil {
+			return nil, err
+		}
+		return []EventV2{obj}, nil
+	} else {
+		obj := make([]EventV2, 0)
+		if err := json.Unmarshal(data, &obj); err != nil {
+			return nil, err
+		}
+		return obj, nil
+	}
 }

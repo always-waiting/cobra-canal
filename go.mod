@@ -39,6 +39,7 @@ require (
 	github.com/myesui/uuid v1.0.0 // indirect
 	github.com/ngaut/pools v0.0.0-20180318154953-b7bc8c42aac7 // indirect
 	github.com/ngaut/sync2 v0.0.0-20141008032647-7a24ed77b2ef // indirect
+	github.com/panjf2000/ants/v2 v2.3.1
 	github.com/pingcap/errors v0.11.4 // indirect
 	github.com/pingcap/goleveldb v0.0.0-20191031114657-7683883cfb36 // indirect
 	github.com/pingcap/kvproto v0.0.0-20191112060542-7280f6077327 // indirect
@@ -53,7 +54,7 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.3.2
-	github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271 // indirect
+	github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5 // indirect
 	github.com/twinj/uuid v1.0.0 // indirect
 	github.com/uber/jaeger-client-go v2.20.1+incompatible // indirect
@@ -61,6 +62,7 @@ require (
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	go.etcd.io/bbolt v1.3.3 // indirect
 	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e // indirect
+	google.golang.org/grpc v1.24.0
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
