@@ -22,6 +22,7 @@ type Aggregatable interface {
 	AppendEvent(string, event.Event) error
 	CreateEvent(string, event.Event) error
 	GetSendChan() chan string
+	GetSendChanV2() chan []event.Event
 	MoveEvents(string) ([]event.Event, error)
 	DiffData(*IdxRuleConfig, map[string]interface{}, map[string]interface{}) (map[string]interface{}, error)
 	Stop()
@@ -31,11 +32,22 @@ type Aggregatable interface {
 	GetTimeDuration() string
 }
 
-func makeDefaultAggregator(r *RuleConfig) *Aggregator {
-	ret := &Aggregator{}
-	ret.CIdxGenerator = ret.defaultCIdxGenerator
-	ret.SetRule(r.AggreCfg.IdxRulesCfg)
-	ret.Collector = makeCollector(r.AggreCfg)
+func makeDefaultAggregator(r *RuleConfig) Aggregatable {
+	var ret Aggregatable
+	switch r.AggreCfg.Type {
+	case "v2":
+		ag := &AggregatorV2{}
+		ag.CIdxGenerator = ag.defaultCIdxGenerator
+		ag.SetRule(r.AggreCfg.IdxRulesCfg)
+		ag.Collector = makeCollectorV2(r.AggreCfg)
+		ret = ag
+	default:
+		ag := &Aggregator{}
+		ag.CIdxGenerator = ag.defaultCIdxGenerator
+		ag.SetRule(r.AggreCfg.IdxRulesCfg)
+		ag.Collector = makeCollector(r.AggreCfg)
+		ret = ag
+	}
 	return ret
 }
 
@@ -62,6 +74,7 @@ func (b *Aggregator) Stop() {
 	for {
 		if b.Collector.IsEmpty() {
 			close(b.Collector.SendChan)
+			close(b.Collector.SendChanV2)
 			break
 		}
 	}
@@ -89,6 +102,10 @@ func (this *Aggregator) HasIdx(key string) bool {
 
 func (this *Aggregator) GetSendChan() chan string {
 	return this.Collector.SendChan
+}
+
+func (this *Aggregator) GetSendChanV2() chan []event.Event {
+	return this.Collector.SendChanV2
 }
 
 func (this *Aggregator) GetIdxValue(e event.Event) (string, error) {

@@ -17,6 +17,7 @@ type configure struct {
 }
 
 type AggreConfig struct {
+	Type        string          `toml:"type" description:"类型"`
 	Time        int             `toml:"time" description:"缓存秒数"`
 	IdxRulesCfg []IdxRuleConfig `toml:"idxrule" description:"缓存键的生成规则"`
 }

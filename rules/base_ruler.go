@@ -179,7 +179,7 @@ func (this *BasicRuler) AddTransferFunc(name string, f func([]event.Event) (inte
 func (this *BasicRuler) Start() {
 	this.StartConsume()
 	if this.IsAggre() {
-		go this.StartAggregation()
+		go this.StartAggregationV2()
 	}
 }
 
@@ -288,19 +288,15 @@ func (this *BasicRuler) Push(events []event.Event) {
 	wg.Wait()
 }
 
-func (this *BasicRuler) StartAggregation() {
-	sendKey := this.aggregator.GetSendChan()
+func (this *BasicRuler) StartAggregationV2() {
+	esChan := this.aggregator.GetSendChanV2()
 	for {
-		key, isOpen := <-sendKey
+		es, isOpen := <-esChan
 		if !isOpen {
 			break
 		}
-		events, err := this.aggregator.MoveEvents(key)
-		if err != nil {
-			continue
-		}
-		this.Log.Debugf("Rule%d: 聚合消费%s键的事件包", this.number, key)
-		this.Push(events)
+		this.Log.Debugf("Rule%d: 聚合消费数据包: %#v", this.number, es)
+		this.Push(es)
 	}
 	this.closeAggregation <- struct{}{}
 }

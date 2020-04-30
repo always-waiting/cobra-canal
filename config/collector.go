@@ -12,11 +12,12 @@ const (
 )
 
 type Collector struct {
-	Mutex    sync.Mutex               `description:"防止数据竞争的锁"`
-	Data     map[string][]event.Event `description:"存储的数据"`
-	TList    map[string]*time.Timer   `description:"具体的延时对象"`
-	SendChan chan string              `description:"发送管道，到时间会把键发送到这里"`
-	Interval time.Duration            `description:"缓存时间"`
+	Mutex      sync.Mutex               `description:"防止数据竞争的锁"`
+	Data       map[string][]event.Event `description:"存储的数据"`
+	TList      map[string]*time.Timer   `description:"具体的延时对象"`
+	SendChan   chan string              `description:"发送管道，到时间会把键发送到这里"`
+	SendChanV2 chan []event.Event
+	Interval   time.Duration `description:"缓存时间"`
 }
 
 func makeCollector(aggreCfg *AggreConfig) (collector *Collector) {
@@ -24,6 +25,7 @@ func makeCollector(aggreCfg *AggreConfig) (collector *Collector) {
 	collector.Data = make(map[string][]event.Event)
 	collector.TList = make(map[string]*time.Timer)
 	collector.SendChan = make(chan string)
+	collector.SendChanV2 = make(chan []event.Event)
 	collector.Interval = time.Second * time.Duration(aggreCfg.Time)
 	return
 }
@@ -66,7 +68,10 @@ func (c *Collector) Clean() {
 		sendKey := key
 		if timer.Stop() {
 			c.TList[sendKey] = time.AfterFunc(1*time.Second, func() {
-				c.SendChan <- sendKey
+				es, err := c.MoveEvents(sendKey)
+				if err == nil {
+					c.SendChanV2 <- es
+				}
 			})
 		}
 	}
@@ -79,7 +84,10 @@ func (c *Collector) AppendEvent(key string, e event.Event) (err error) {
 	c.Data[key] = append(c.Data[key], e)
 	if c.TList[key].Stop() {
 		c.TList[key] = time.AfterFunc(c.Interval, func() {
-			c.SendChan <- key
+			es, err := c.MoveEvents(key)
+			if err == nil {
+				c.SendChanV2 <- es
+			}
 		})
 	}
 	c.Unlock()
@@ -91,7 +99,10 @@ func (c *Collector) CreateEvent(key string, e event.Event) (err error) {
 	c.Lock()
 	c.Data[key] = []event.Event{e}
 	c.TList[key] = time.AfterFunc(c.Interval, func() {
-		c.SendChan <- key
+		es, err := c.MoveEvents(key)
+		if err == nil {
+			c.SendChanV2 <- es
+		}
 	})
 	c.Unlock()
 	return
