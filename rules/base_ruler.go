@@ -202,9 +202,13 @@ func (this *BasicRuler) HandleEvent(e event.Event) (err error) {
 	}()
 	// 应用过滤规则
 	flag, err := this.Filter(&e)
-	if err != nil || !flag {
-		err = this.ModifyErr(err)
+	if !flag {
 		this.Log.Debugf("Rule%d: 事件跳过", this.number)
+		return
+	}
+	if err != nil {
+		this.Log.Debugf("Rule%d: 事件跳过 - 过滤出现错误%s", this.number, err)
+		err = this.ModifyErr(err)
 		return
 	}
 	// 消费事件
