@@ -149,7 +149,13 @@ func (m sqlMaker) onRowString() string {
 		vals := make([]string, 0)
 		for key, value := range m.valueFields {
 			cols = append(cols, fmt.Sprintf("`%s`", key))
-			vals = append(vals, fmt.Sprintf("'%v'", value))
+			if value == nil {
+				vals = append(vals, "null")
+			} else if valBytes, ok := value.([]byte); ok {
+				vals = append(vals, fmt.Sprintf("'%v'", string(valBytes)))
+			} else {
+				vals = append(vals, fmt.Sprintf("'%v'", value))
+			}
 		}
 		return fmt.Sprintf(m.sqlBase, m.table, strings.Join(cols, ","), strings.Join(vals, ","))
 
@@ -157,7 +163,13 @@ func (m sqlMaker) onRowString() string {
 		values := make([]string, 0)
 		search := make([]string, 0)
 		for key, value := range m.valueFields {
-			values = append(values, fmt.Sprintf("`%s`='%v'", key, value))
+			if value == nil {
+				values = append(values, fmt.Sprintf("`%s`='null'", key))
+			} else if valBytes, ok := value.([]byte); ok {
+				values = append(values, fmt.Sprintf("`%s`='%v'", key, string(valBytes)))
+			} else {
+				values = append(values, fmt.Sprintf("`%s`='%v'", key, value))
+			}
 		}
 		for key, value := range m.searchFields {
 			search = append(search, fmt.Sprintf("`%s`='%v'", key, value))
