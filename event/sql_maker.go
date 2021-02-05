@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	SQL_UPDATE_TEMPLATE = "UPDATE %s SET %s WHERE %s"
-	SQL_INSERT_TEMPLATE = "INSERT INTO %s (%s) VALUES (%s)"
-	SQL_DELETE_TEMPLATE = "DELETE FROM %s WHERE %s"
+	SQL_UPDATE_TEMPLATE = "UPDATE `%s` SET %s WHERE %s"
+	SQL_INSERT_TEMPLATE = "INSERT INTO `%s` (%s) VALUES (%s)"
+	SQL_DELETE_TEMPLATE = "DELETE FROM `%s` WHERE %s"
 	SQL_DDL_TEMPLATE    = "%s"
 	MYSQL_ERR1          = "未考虑的同步类型(%s)"
 	MYSQL_ERR2          = "数据更新发现新sql模板(%s)"
